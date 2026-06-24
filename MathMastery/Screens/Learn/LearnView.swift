@@ -4,6 +4,9 @@ struct LearnView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
 
+    @State private var activeCell: (row: Int, col: Int)?
+    @State private var cellCenters: [String: CGPoint] = [:]
+
     init(viewModel: ViewModel) {
         self._viewModel = StateObject(wrappedValue: viewModel)
     }
@@ -11,145 +14,23 @@ struct LearnView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
-                    Text("Multiplication Table")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Multiplication\nTable")
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
                         .padding(.top)
 
-                    Text("Tap a cell to see the calculation details.")
-                        .font(.system(size: 17))
+                    Text("Tap or drag anywhere")
                         .foregroundColor(.secondary)
 
-                    GeometryReader { geometry in
-                        let availableWidth = geometry.size.width - 32
-                            let cellSize = cellSize(for: availableWidth)
-                            let tablePadding: CGFloat = 10
-
-                        VStack(spacing: 16) {
-                            // Выбранное значение
-                            Text(viewModel.selectedText)
-                                .font(.system(size: 28, weight: .bold))
-                                .foregroundColor(AppColor.commonAccentBlue)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 20)
-                                        .fill(AppColor.commonAccentBlue.opacity(0.08))
-                                )
-
-                            VStack(spacing: 8) {
-                                // Header row
-                                HStack(spacing: 6) {
-                                    Text("×")
-                                        .font(.headline)
-                                        .foregroundColor(.secondary)
-                                        .frame(width: cellSize, height: cellSize)
-
-                                    ForEach(viewModel.numbers, id: \.self) { column in
-                                        Text("\(column)")
-                                            .font(.system(size: headerFontSize(for: cellSize), weight: .semibold))
-                                            .foregroundColor(AppColor.commonAccentBlue)
-                                            .frame(width: cellSize, height: cellSize)
-                                            .background(Color.gray.opacity(0.15))
-                                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                                    }
-                                }
-
-                                // Table rows
-                                ForEach(viewModel.numbers, id: \.self) { row in
-                                    HStack(spacing: 6) {
-                                        Text("\(row)")
-                                            .font(.system(size: headerFontSize(for: cellSize), weight: .semibold))
-                                            .foregroundColor(AppColor.commonAccentBlue)
-                                            .frame(width: cellSize, height: cellSize)
-                                            .background(Color.gray.opacity(0.15))
-                                            .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                                        ForEach(viewModel.numbers, id: \.self) { column in
-                                            let isSelected = viewModel.isSelected(row: row, column: column)
-                                            let value = viewModel.value(row: row, column: column)
-
-                                            Text("\(value)")
-                                                .font(.system(size: dynamicFontSize(for: cellSize), weight: .medium))
-                                                .minimumScaleFactor(0.55)
-                                                .lineLimit(1)
-                                                .multilineTextAlignment(.center)
-                                                .foregroundColor(.primary)
-                                                .frame(width: cellSize, height: cellSize)
-                                                .background(
-                                                    isSelected
-                                                    ? AppColor.commonAccentBlue.opacity(0.15)
-                                                    : Color.green.opacity(0.15)
-                                                )
-                                                .overlay {
-                                                    RoundedRectangle(cornerRadius: 10)
-                                                        .stroke(
-                                                            isSelected ? AppColor.commonAccentBlue : .clear,
-                                                            lineWidth: 2.5
-                                                        )
-                                                }
-                                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                                                .onTapGesture {
-                                                    withAnimation(.easeInOut(duration: 0.15)) {
-                                                        viewModel.selectCell(row: row, column: column)
-                                                    }
-                                                }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 24)
-                                .fill(.white)
-                        )
-                        .frame(maxWidth: .infinity)
-                        .gesture(
-                                        DragGesture(minimumDistance: 0, coordinateSpace: .local)
-                                            .onChanged { value in
-                                                let loc = value.location
-
-                                                let colWidth = cellSize + 6
-                                                let rowHeight = cellSize + 8
-
-                                                // Финальная подгонка под твои логи
-                                                let headerOffset: CGFloat = cellSize + 20   // сильно уменьшили
-
-                                                let adjustedX = loc.x - 10
-                                                let adjustedY = loc.y - headerOffset
-
-                                                let columnIndex = max(0, Int(adjustedX / colWidth))
-                                                var rowIndex = max(0, Int(adjustedY / rowHeight))
-
-                                                // Защита первой строки
-                                                if adjustedY < rowHeight * 0.7 {
-                                                    rowIndex = 0
-                                                }
-
-                                                let numbers = viewModel.numbers
-
-                                                guard columnIndex < numbers.count,
-                                                      rowIndex < numbers.count else { return }
-
-                                                let row = numbers[rowIndex]
-                                                let column = numbers[columnIndex]
-
-                                                print("→ col:\(columnIndex), row:\(rowIndex) | y:\(Int(loc.y)), adjustedY:\(Int(adjustedY)), rowHeight:\(Int(rowHeight))")
-
-                                                withAnimation(.easeInOut(duration: 0.1)) {
-                                                    viewModel.selectCell(row: row, column: column)
-                                                }
-                                            }
-                                    )
-                    }
-                    .padding(.leading, 16)
-                    .padding(.trailing, 16)
+                    selectedView
+                    gridView
                 }
+                .padding(.horizontal)
                 .frame(maxWidth: .infinity)
             }
             .background(Color(uiColor: .systemGroupedBackground))
+
+            // 🔥 TOOLBAR (как во втором экране)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Text("MathMastery")
@@ -160,7 +41,9 @@ struct LearnView: View {
                 .sharedBackgroundVisibility(.hidden)
 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {} label: {
+                    Button {
+                        print("Profile tapped")
+                    } label: {
                         Image("img_student_purple")
                             .resizable()
                             .scaledToFill()
@@ -169,29 +52,162 @@ struct LearnView: View {
                     }
                 }
             }
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(.white, for: .navigationBar)
+
+            .toolbarBackground(Color.white, for: .navigationBar)
         }
     }
 
-    // MARK: - Dynamic Sizes
-    private func cellSize(for width: CGFloat) -> CGFloat {
-        let columnsCount: CGFloat = 10
+
+    // MARK: - Selected
+    private var selectedView: some View {
+        Text(viewModel.selectedText)
+            .font(.system(size: 28, weight: .bold))
+            .foregroundColor(AppColor.commonAccentBlue)
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(AppColor.commonAccentBlue.opacity(0.08))
+            )
+
+    }
+
+    // MARK: - GRID
+    private var gridView: some View {
+
         let spacing: CGFloat = 6
-        let calculated = (width - spacing * (columnsCount - 1)) / columnsCount
-        return max(calculated, 30)        // чуть уменьшили минимум
+
+        return GeometryReader { geo in
+
+            let columns = CGFloat(viewModel.numbers.count + 1)
+            let totalSpacing = spacing * (columns - 1)
+            let cellSize = (geo.size.width - totalSpacing) / columns
+
+            VStack(spacing: spacing) {
+
+                // HEADER
+                HStack(spacing: spacing) {
+                    Text("×")
+                        .frame(width: cellSize, height: cellSize)
+                        .background(Color.gray.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                    ForEach(viewModel.numbers, id: \.self) { col in
+                        Text("\(col)")
+                            .frame(width: cellSize, height: cellSize)
+                            .background(Color.gray.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                }
+
+                ForEach(viewModel.numbers.indices, id: \.self) { r in
+                    HStack(spacing: spacing) {
+
+                        Text("\(viewModel.numbers[r])")
+                            .frame(width: cellSize, height: cellSize)
+                            .background(Color.gray.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                        ForEach(viewModel.numbers.indices, id: \.self) { c in
+
+                            let value = viewModel.value(
+                                row: viewModel.numbers[r],
+                                column: viewModel.numbers[c]
+                            )
+
+                            let isSelected = activeCell?.row == r && activeCell?.col == c
+                            let dist = distance(r, c)
+
+                            Text("\(value)")
+                                .frame(width: cellSize, height: cellSize)
+                                .background(waveColor(dist, isSelected: isSelected))
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .background(
+                                    GeometryReader { geo in
+                                        Color.green.opacity(0.06)
+                                            .onAppear {
+                                                DispatchQueue.main.async {
+                                                    let center = CGPoint(
+                                                        x: geo.frame(in: .named("GRID")).midX,
+                                                        y: geo.frame(in: .named("GRID")).midY
+                                                    )
+                                                    cellCenters["\(r)-\(c)"] = center
+                                                }
+                                            }
+                                    }
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+                }
+            }
+            .frame(width: geo.size.width)
+            .coordinateSpace(name: "GRID")
+            .contentShape(Rectangle())
+            .gesture(dragGesture())
+        }
     }
 
-    private func dynamicFontSize(for cellSize: CGFloat) -> CGFloat {
-        let base = cellSize * 0.42
-        return max(min(base, 20), 13)
+    // MARK: - DRAG
+    private func dragGesture() -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                updateSelection(at: value.location)
+            }
     }
 
-    private func headerFontSize(for cellSize: CGFloat) -> CGFloat {
-        return cellSize > 45 ? 17 : 15
+    // MARK: - HIT TEST
+    private func updateSelection(at point: CGPoint) {
+
+        guard !cellCenters.isEmpty else { return }
+
+        let closest = cellCenters.min { a, b in
+            distanceSquared(a.value, point) < distanceSquared(b.value, point)
+        }
+
+        guard let key = closest?.key else { return }
+
+        let parts = key.split(separator: "-")
+        guard parts.count == 2,
+              let r = Int(parts[0]),
+              let c = Int(parts[1]) else { return }
+
+        activeCell = (r, c)
+
+        let rowValue = viewModel.numbers[r]
+        let colValue = viewModel.numbers[c]
+
+        viewModel.selectCell(row: rowValue, column: colValue)
+    }
+
+    private func distanceSquared(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
+        let dx = a.x - b.x
+        let dy = a.y - b.y
+        return dx * dx + dy * dy
+    }
+
+    // MARK: - Wave
+    private func waveColor(_ d: Int, isSelected: Bool) -> Color {
+        if isSelected {
+            return Color.green.opacity(0.85)
+        }
+
+        switch d {
+        case 0: return Color.green.opacity(0.60)
+        case 1: return Color.green.opacity(0.45)
+        case 2: return Color.green.opacity(0.30)
+        case 3: return Color.green.opacity(0.18)
+        case 4: return Color.green.opacity(0.10)
+        case 5: return Color.green.opacity(0.05)
+        default: return Color.clear
+        }
+    }
+
+    private func distance(_ r: Int, _ c: Int) -> Int {
+        guard let activeCell else { return Int.max }
+        return abs(r - activeCell.row) + abs(c - activeCell.col)
     }
 }
-
 #Preview {
     LearnView(
         viewModel: .init(

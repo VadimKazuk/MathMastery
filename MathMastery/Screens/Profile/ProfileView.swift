@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct PracticeView: View {
+struct ProfileView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
 
@@ -12,16 +12,12 @@ struct PracticeView: View {
             ScrollView {
                 VStack(spacing: 16) {
 
-                    HStack {
-                        Text("QUESTION 4 OF 10")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+
+                        Text("Soon...")
+                            .font(.system(size: 20, weight: .semibold, design: .rounded))
                             .padding()
-                        Spacer()
-                        Text("STREAK: 12 🔥")
-                            .font(.system(size: 16, weight: .semibold, design: .default))
-                            .foregroundColor(AppColor.commonAccentBlue)
-                            .padding()
-                    }
+
+
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -53,11 +49,11 @@ struct PracticeView: View {
             .toolbarBackground(Color.white, for: .navigationBar)
         }
     }
-    
+
 }
 
 #Preview {
-    PracticeView(viewModel: .init(serviceContainer: PreviewServiceContainer()))
+    ProfileView(viewModel: .init(serviceContainer: PreviewServiceContainer()))
 }
 
 

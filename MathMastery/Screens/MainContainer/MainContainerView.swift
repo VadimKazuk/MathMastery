@@ -11,7 +11,7 @@ struct MainContainerView: View {
                 SplashView()
                     .transition(.opacity)
             case .initial:
-                EmptyView()
+                SplashView()
 //                InitialView(viewModel: .init(
 //                    mainContentBinding: $viewModel.contentViewType
 //                ))

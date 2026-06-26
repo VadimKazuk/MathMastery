@@ -30,7 +30,6 @@ struct MainContainerView: View {
 //                    .navigationBarBackButtonHidden(true)
 //                }
             case .home:
-
                 ContentContainerView(viewModel: .init(serviceContainer: serviceContainer))
             }
         }

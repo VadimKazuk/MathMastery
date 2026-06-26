@@ -41,7 +41,7 @@ struct HomeView: View {
                                 }
 
                                 // --- ТУТ ИСПОЛЬЗУЕТСЯ НАШ ОТДЕЛЬНЫЙ КОМПОНЕНТ ---
-                                AnimatedProgressBar(progress: progress)
+//                                AnimatedProgressBar(progress: progress)
 
                                 // Нижняя строчка
                                 HStack {
@@ -112,46 +112,46 @@ struct HomeView: View {
 
 
 
-struct AnimatedProgressBar: View {
-    let progress: Double
-
-    private let palettes: [[Color]] = [
-        [Color.red, Color.orange],
-        [Color.yellow, Color.orange],
-        [Color.blue, Color.purple],
-        [Color.green, Color.yellow],
-        [Color.pink, Color.red]
-    ]
-
-    @State private var index: Int = 0
-
-    private var gradient: LinearGradient {
-        LinearGradient(
-            colors: palettes[index],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
-    }
-
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-
-                Capsule()
-                    .frame(width: geometry.size.width, height: 14)
-                    .foregroundColor(Color(.systemGray5))
-
-                Capsule()
-                    .fill(gradient)
-                    .frame(width: geometry.size.width * CGFloat(progress), height: 14)
-                    .animation(.easeInOut(duration: 2.5), value: index)
-            }
-        }
-        .frame(height: 14)
-        .onAppear {
-            Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
-                index = (index + 1) % palettes.count
-            }
-        }
-    }
-}
+//struct AnimatedProgressBar: View {
+//    let progress: Double
+//
+//    private let palettes: [[Color]] = [
+//        [Color.red, Color.orange],
+//        [Color.yellow, Color.orange],
+//        [Color.blue, Color.purple],
+//        [Color.green, Color.yellow],
+//        [Color.pink, Color.red]
+//    ]
+//
+//    @State private var index: Int = 0
+//
+//    private var gradient: LinearGradient {
+//        LinearGradient(
+//            colors: palettes[index],
+//            startPoint: .leading,
+//            endPoint: .trailing
+//        )
+//    }
+//
+//    var body: some View {
+//        GeometryReader { geometry in
+//            ZStack(alignment: .leading) {
+//
+//                Capsule()
+//                    .frame(width: geometry.size.width, height: 14)
+//                    .foregroundColor(Color(.systemGray5))
+//
+//                Capsule()
+//                    .fill(gradient)
+//                    .frame(width: geometry.size.width * CGFloat(progress), height: 14)
+//                    .animation(.easeInOut(duration: 2.5), value: index)
+//            }
+//        }
+//        .frame(height: 14)
+//        .onAppear {
+//            Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
+//                index = (index + 1) % palettes.count
+//            }
+//        }
+//    }
+//}

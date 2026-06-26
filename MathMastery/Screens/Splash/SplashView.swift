@@ -7,7 +7,6 @@ struct SplashView: View {
         ZStack {
             VStack {
                 Image("heading_math_mastery")
-
                     .padding(16)
 
                 if !hiddenProgress {

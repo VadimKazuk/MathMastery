@@ -57,7 +57,7 @@ struct ContentContainerView: View {
                 .tag(ContentViewType.profile)
         }
         .tint(AppColor.commonAccentBlue)
-        .preferredColorScheme(.light)
+//        .preferredColorScheme(.light)
         .toast(serviceContainer: serviceContainer)
         .progressIndicator(serviceContainer: serviceContainer)
     }

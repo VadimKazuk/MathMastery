@@ -37,7 +37,7 @@ struct ProfileView: View {
                     Button {
                         print("Profile tapped")
                     } label: {
-                        Image("img_student_purple")
+                        Image("img_profile_\(Int.random(in: 1...12))")
                             .resizable()
                             .scaledToFill()
                             .frame(width: 35, height: 35)

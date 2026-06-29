@@ -16,11 +16,11 @@ struct MathMasteryApp: App {
     var body: some Scene {
         WindowGroup {
             MainContainerView(viewModel: .init(serviceContainer: serviceContainer))
-                .accentColor(.orange)
                 .environmentObject(serviceContainer)
                 .onAppear {
                     self.delegate.serviceContainer = serviceContainer
                 }
+                .preferredColorScheme(.light)
         }
     }
 }

@@ -33,6 +33,8 @@ struct MainContainerView: View {
                 ContentContainerView(viewModel: .init(serviceContainer: serviceContainer))
             }
         }
+//        .preferredColorScheme(.light)
+        
 //        .alert(isPresented: $viewModel.showAlert) {
 //            Alert(
 //                title: Text("Are you still in the store?"),

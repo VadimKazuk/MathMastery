@@ -12,7 +12,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) -> Bool {
 //        FirebaseApp.configure()
 
-        return true
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+              windowScene.windows.forEach {
+                  $0.overrideUserInterfaceStyle = .light
+              }
+          }
+
+          return true
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
@@ -25,8 +31,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             didReceiveRemoteNotification userInfo: [AnyHashable : Any]
         ) async -> UIBackgroundFetchResult {
 
-            // Здесь можно безопасно работать с вашим storageService или serviceContainer,
-            // так как они тоже находятся на Main Actor
 
             return .newData
         }

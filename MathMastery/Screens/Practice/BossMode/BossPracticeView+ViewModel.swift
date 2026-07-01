@@ -12,7 +12,7 @@ extension BossPracticeView {
         @Published var selectedTable = 7
         @Published private(set) var questionIndex = 0
         @Published private(set) var correctCount = 0
-        @Published private(set) var wrongFacts: [String] = []
+        @Published private(set) var mistakes: [PracticeMistake] = []
 
         let tables = Array(2...12)
 
@@ -41,14 +41,22 @@ extension BossPracticeView {
             phase = .active
             questionIndex = 0
             correctCount = 0
-            wrongFacts = []
+            mistakes = []
         }
 
-        func selectAnswer(_ answer: Int) -> PracticeResult? {
+        func selectAnswer(_ answer: Int) -> PracticeSession? {
             if answer == currentQuestion.answer {
                 correctCount += 1
             } else {
-                wrongFacts.append(currentQuestion.fact)
+                mistakes.append(
+                    PracticeMistake(
+                        left: currentQuestion.left,
+                        right: currentQuestion.right,
+                        correctAnswer: currentQuestion.answer,
+                        userAnswer: answer,
+                        mode: .boss
+                    )
+                )
             }
 
             if questionIndex == questions.count - 1 {
@@ -59,21 +67,19 @@ extension BossPracticeView {
             return nil
         }
 
-        func makeResult() -> PracticeResult {
+        func makeResult() -> PracticeSession {
             let accuracy = Int((Double(correctCount) / Double(questions.count)) * 100)
 
-            return PracticeResult(
+            return PracticeSession(
                 mode: .boss,
-                title: "×\(selectedTable) Mastery",
-                summary: "Table-specific mastery check complete.",
-                metrics: [
-                    .init(title: "Accuracy", value: "\(accuracy)%"),
-                    .init(title: "Weak Facts", value: "\(wrongFacts.count)"),
-                    .init(title: "Mastery Score", value: "\(accuracy)")
-                ],
-                mistakes: wrongFacts,
-                bossTable: selectedTable
+                duration: 0,
+                accuracy: accuracy,
+                correctAnswers: correctCount,
+                questionsCount: 0,
+                longestStreak: 0,
+                mistakes: []
             )
+
         }
     }
 }

@@ -74,12 +74,18 @@ enum PracticeMode: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
+extension PracticeMode {
+    var raw: String {
+        rawValue
+    }
+}
+
 enum PracticeRoute: Hashable {
     case speed
     case classic
     case survival
     case boss
-    case result(PracticeResult)
+    case result(PracticeSession)
 }
 
 struct PracticeQuestion: Hashable {
@@ -111,6 +117,116 @@ struct PracticeResult: Hashable {
     let title: String
     let summary: String
     let metrics: [PracticeResultMetric]
-    let mistakes: [String]
+    let mistakes: [PracticeMistake]
     let bossTable: Int?
 }
+
+struct AnswerOption: Identifiable, Hashable {
+    let id = UUID()
+    let value: Int
+    var state: AnswerState = .normal
+}
+
+enum AnswerState {
+    case normal
+    case correct
+    case wrong
+}
+
+
+@Model
+final class PracticeMistake {
+
+    var id: UUID
+    var left: Int
+    var right: Int
+
+    var correctAnswer: Int
+    var userAnswer: Int
+
+    var modeRaw: String
+    var date: Date
+
+    var session: PracticeSession?
+
+    init(
+        left: Int,
+        right: Int,
+        correctAnswer: Int,
+        userAnswer: Int,
+        mode: PracticeMode
+    ) {
+        self.id = UUID()
+        self.left = left
+        self.right = right
+        self.correctAnswer = correctAnswer
+        self.userAnswer = userAnswer
+        self.modeRaw = mode.rawValue
+        self.date = Date()
+    }
+
+    var question: String {
+        "\(left) × \(right)"
+    }
+
+    var isCorrect: Bool {
+        userAnswer == correctAnswer
+    }
+}
+
+
+import SwiftData
+
+@Model
+final class PracticeSession {
+
+    var id: UUID
+    var date: Date
+    var modeRaw: String
+
+    // metadata
+    var duration: Int?        // Speed mode (seconds)
+    var difficulty: String?   // future use
+
+    // stats (вынесены сюда для простоты и скорости fetch)
+    var accuracy: Int
+    var correctAnswers: Int
+    var questionsCount: Int
+    var longestStreak: Int
+    var averageResponseTime: Double?
+
+    // relationships
+    @Relationship(deleteRule: .cascade)
+    var mistakes: [PracticeMistake]
+
+    init(
+        mode: PracticeMode,
+        duration: Int? = nil,
+        difficulty: String? = nil,
+        accuracy: Int,
+        correctAnswers: Int,
+        questionsCount: Int,
+        longestStreak: Int,
+        averageResponseTime: Double? = nil,
+        mistakes: [PracticeMistake] = []
+    ) {
+        self.id = UUID()
+        self.date = Date()
+        self.modeRaw = mode.rawValue
+
+        self.duration = duration
+        self.difficulty = difficulty
+
+        self.accuracy = accuracy
+        self.correctAnswers = correctAnswers
+        self.questionsCount = questionsCount
+        self.longestStreak = longestStreak
+        self.averageResponseTime = averageResponseTime
+        self.mistakes = mistakes
+    }
+
+    var mode: PracticeMode {
+        PracticeMode(rawValue: modeRaw) ?? .classic
+    }
+}
+

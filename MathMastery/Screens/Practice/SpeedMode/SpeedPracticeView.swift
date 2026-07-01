@@ -2,10 +2,11 @@ import SwiftUI
 
 struct SpeedPracticeView: View {
     @StateObject var viewModel: ViewModel
+    @EnvironmentObject var serviceContainer: ServiceContainer
 
-    let onComplete: (PracticeResult) -> Void
+    let onComplete: (PracticeSession) -> Void
 
-    init(viewModel: ViewModel, onComplete: @escaping (PracticeResult) -> Void) {
+    init(viewModel: ViewModel, onComplete: @escaping (PracticeSession) -> Void) {
         self._viewModel = StateObject(wrappedValue: viewModel)
         self.onComplete = onComplete
     }
@@ -46,16 +47,11 @@ struct SpeedPracticeView: View {
         .onDisappear {
             viewModel.stopTimer()
         }
-        .onChange(of: viewModel.isFinished) { oldValue, newValue in
-            if newValue {
+        .onChange(of: viewModel.isFinished) { _, finished in
+            if finished {
                 completeSession()
             }
         }
-    }
-
-    private func completeSession() {
-        viewModel.finish()
-        onComplete(viewModel.makeResult())
     }
 
     @ViewBuilder
@@ -94,14 +90,12 @@ struct SpeedPracticeView: View {
                 .foregroundColor(viewModel.timerForegroundColor)
         }
         .font(.system(size: 15, weight: .semibold, design: .rounded))
-        .foregroundColor(viewModel.timerColor)
-        .animation(.easeInOut(duration: 0.25), value: viewModel.secondsRemaining <= 10)
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
         .background {
             Capsule()
                 .fill(viewModel.badgeBackgroundColor)
-                .animation(.easeInOut(duration: 0.2), value: viewModel.blinkToggle)
+                .animation(.easeInOut(duration: 1), value: viewModel.blinkToggle)
         }
     }
 
@@ -155,4 +149,13 @@ struct SpeedPracticeView: View {
             }
         }
     }
+}
+
+private extension SpeedPracticeView {
+
+    func completeSession() {
+        viewModel.finish()
+        onComplete(viewModel.makeResult())
+    }
+
 }

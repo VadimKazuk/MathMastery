@@ -1,10 +1,3 @@
-//
-//  MathMasteryApp.swift
-//  MathMastery
-//
-//  Created by Vadim Kazuk on 23/06/2026.
-//
-
 import SwiftUI
 import SwiftData
 

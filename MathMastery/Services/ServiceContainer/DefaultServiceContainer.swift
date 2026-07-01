@@ -34,6 +34,12 @@ final class DefaultServiceContainer: ServiceContainer {
                     factory: ProgressManager()
                 )
 
+                self?.register(
+                    type: SwiftDataService.self,
+                    as: .singleton,
+                    factory: SwiftDataManager()
+                )
+
                 promise(.success(true))
             }
         }

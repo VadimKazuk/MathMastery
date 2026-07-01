@@ -47,65 +47,42 @@ private extension LearnView {
     }
 
     var modeControl: some View {
-        HStack(spacing: 0) {
-            ForEach(LearnMode.allCases) { mode in
-                Button {
-                    withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
-                        viewModel.selectMode(mode)
-                    }
-                } label: {
-                    Text(mode.title)
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
-                        .foregroundColor(viewModel.mode == mode ? .white : Color.primary.opacity(0.75))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background {
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(viewModel.mode == mode ? AppColor.commonAccentBlue : Color.clear)
-                        }
+        Picker("Learning Mode", selection: Binding(
+            get: { viewModel.mode },
+            set: { newMode in
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
+                    viewModel.selectMode(newMode)
                 }
-                .buttonStyle(.plain)
+            }
+        )) {
+            ForEach(LearnMode.allCases) { mode in
+                Text(mode.title)
+                    .tag(mode)
             }
         }
-        .padding(4)
-        .background {
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground))
-        }
+        .pickerStyle(.segmented)
+        .padding(.vertical, 2)
     }
 
     var focusTableSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("SET FOCUS TABLE")
                 .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundColor(Color.primary.opacity(0.75))
+                .foregroundColor(.secondary)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(viewModel.focusTables, id: \.self) { number in
-                        Button {
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
-                                viewModel.setFocusTable(number)
-                            }
-                        } label: {
-                            Text("\(number)")
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundColor(viewModel.focusTableTextColor(number))
-                                .frame(width: 62, height: 62)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(viewModel.focusTableColor(number))
-                                }
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .stroke(Color.gray.opacity(0.18), lineWidth: 2)
-                                }
-                        }
-                        .buttonStyle(.plain)
-                    }
+            Picker(
+                "Focus Table",
+                selection: Binding(
+                    get: { viewModel.focusTable },
+                    set: { viewModel.setFocusTable($0) }
+                )
+            ) {
+                ForEach(viewModel.focusTables, id: \.self) { number in
+                    Text("\(number)")
+                        .tag(number)
                 }
-                .padding(6)
             }
+            .pickerStyle(.segmented)
         }
     }
 
@@ -119,10 +96,10 @@ private extension LearnView {
                     .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 8)
             }
             .overlay(alignment: .bottomLeading) {
-//                if viewModel.isFocusMode {
-//                    focusProgressBar
-//                        .padding(.horizontal, 16)
-//                }
+                //                if viewModel.isFocusMode {
+                //                    focusProgressBar
+                //                        .padding(.horizontal, 16)
+                //                }
             }
     }
 
@@ -156,15 +133,15 @@ private extension LearnView {
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
                     .foregroundColor(AppColor.commonAccentBlue)
 
-                Text(viewModel.equationSubtitle)
-                    .font(.system(size: 17, weight: .regular, design: .rounded))
-                    .foregroundColor(Color.primary)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
-                    .background {
-                        Capsule()
-                            .fill(Color.white.opacity(0.72))
-                    }
+//                Text(viewModel.equationSubtitle)
+//                    .font(.system(size: 17, weight: .regular, design: .rounded))
+//                    .foregroundColor(Color.primary)
+//                    .padding(.horizontal, 18)
+//                    .padding(.vertical, 10)
+//                    .background {
+//                        Capsule()
+//                            .fill(Color.white.opacity(0.72))
+//                    }
 
                 Text("ACTIVE LEARNING")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -194,15 +171,10 @@ private extension LearnView {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 20, weight: .bold))
-                .foregroundColor(AppColor.commonAccentBlue)
                 .frame(width: 40, height: 40)
-                .background {
-                    Circle()
-                        .fill(Color.white)
-                        .shadow(color: Color.black.opacity(0.08), radius: 5, x: 0, y: 3)
-                }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glass)
+        .tint(AppColor.commonAccentBlue)
     }
 }
 
@@ -255,9 +227,9 @@ private struct MultiplicationGridView: View {
             headerRow(cellSize: cellSize)
             multiplicationRows(cellSize: cellSize)
         }
-        .frame(width: width)
-        .coordinateSpace(name: LearnView.ViewModel.gridCoordinateSpaceName)
-        .contentShape(Rectangle())
+            .frame(width: width)
+            .coordinateSpace(name: LearnView.ViewModel.gridCoordinateSpaceName)
+            .contentShape(Rectangle())
 
         if viewModel.isFocusMode {
             content.gesture(dragGesture)

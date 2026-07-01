@@ -2,9 +2,9 @@ import SwiftUI
 
 struct ClassicPracticeView: View {
     @StateObject var viewModel: ViewModel
-    let onComplete: (PracticeResult) -> Void
+    let onComplete: (PracticeSession) -> Void
 
-    init(viewModel: ViewModel, onComplete: @escaping (PracticeResult) -> Void) {
+    init(viewModel: ViewModel, onComplete: @escaping (PracticeSession) -> Void) {
         self._viewModel = StateObject(wrappedValue: viewModel)
         self.onComplete = onComplete
     }
@@ -22,9 +22,13 @@ struct ClassicPracticeView: View {
                     Text("\(Int(viewModel.progress * 100))% Complete")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(.secondary)
-
                     ProgressView(value: viewModel.progress)
                         .tint(AppColor.commonAccentBlue)
+                        .animation(.easeInOut(duration: 0.35), value: viewModel.progress)
+                    Text("MULTIPLICATION")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .tracking(1.2)
+                        .foregroundColor(.secondary)
                 }
 
                 questionCard
@@ -73,15 +77,9 @@ struct ClassicPracticeView: View {
 
     private var questionCard: some View {
         VStack(spacing: 18) {
-            Text("MULTIPLICATION")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .tracking(1.2)
-                .foregroundColor(.secondary)
-
-            HStack(spacing: 18) {
+            HStack(spacing: 8) {
                 Text("\(viewModel.currentQuestion.left)")
                 Text("×")
-                    .foregroundColor(AppColor.commonAccentBlue)
                 Text("\(viewModel.currentQuestion.right)")
                 Text("=")
                 Text(viewModel.answerText.isEmpty ? "?" : viewModel.answerText)
@@ -94,7 +92,8 @@ struct ClassicPracticeView: View {
                             .offset(y: 8)
                     }
             }
-            .font(.system(size: 34, weight: .bold, design: .rounded))
+            .font(.system(size: 36, weight: .bold, design: .rounded))
+            .foregroundColor(.primary)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 136)

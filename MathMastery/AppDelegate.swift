@@ -12,12 +12,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) -> Bool {
 //        FirebaseApp.configure()
 
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-              windowScene.windows.forEach {
-                  $0.overrideUserInterfaceStyle = .light
-              }
-          }
-
           return true
     }
 

@@ -1,14 +1,10 @@
 import Combine
 import SwiftUI
+import SwiftData
 
 extension SpeedPracticeView {
     final class ViewModel: ObservableObject {
-        private static let sessionDuration = 60
-        private static let questionRange = 2...9
-        private static let answerRange = 1...144
-
-        private var questionStartTime = Date()
-        private var responseTimes: [TimeInterval] = []
+        private let serviceContainer: ServiceContainer
 
         @Published private(set) var secondsRemaining = sessionDuration
         @Published private(set) var solvedCount = 0
@@ -20,17 +16,29 @@ extension SpeedPracticeView {
         @Published private(set) var answerOptions: [AnswerOption] = []
         @Published private(set) var isFinished = false
         @Published private(set) var isAcceptingAnswers = false
-
         @Published private(set) var blinkToggle = false
 
         @Published private(set) var didComplete = false
         @Published private(set) var countdownValue: Int?
 
+        @Published private(set) var mistakes: [PracticeMistake] = []
+
+        private static let sessionDuration = 17
+        private static let questionRange = 2...9
+
+        private var questionStartTime = Date()
+        private var responseTimes: [TimeInterval] = []
+        private var averageResponseTime: Double = 0.0
+
         private var timerCancellable: AnyCancellable?
         private var countdownCancellable: AnyCancellable?
         private var blinkCancellable: AnyCancellable?
 
-        init() {
+        private let swiftDB: SwiftDataService
+
+        init(serviceContainer: ServiceContainer) {
+            self.serviceContainer = serviceContainer
+            self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
             updateAnswerOptions()
         }
 
@@ -52,25 +60,40 @@ extension SpeedPracticeView {
             Double(secondsRemaining) / Double(Self.sessionDuration)
         }
 
-        var averageResponseTime: String {
-            guard !responseTimes.isEmpty else { return "0.0s" }
+        var averageResponseTimeValue: Double {
+            guard !responseTimes.isEmpty else { return 0 }
+            return responseTimes.reduce(0, +) / Double(responseTimes.count)
+        }
 
-            let avg = responseTimes.reduce(0, +) / Double(responseTimes.count)
-            return String(format: "%.1fs", avg)
+        var averageResponseTimeText: String {
+            String(format: "%.1fs", averageResponseTimeValue)
         }
 
         var badgeBackgroundColor: Color {
-            if isWarningPhase {
-                return blinkToggle ? .red : .red.opacity(0.6)
-            } else {
-                return .white
-            }
+            guard isWarningPhase else { return .white }
+
+            return blinkToggle
+                ? .red
+                : .red.opacity(0.4)
         }
 
-        func resetSession() {
-            stopTimer()
+        func finish() {
+            guard !didComplete else { return }
+            didComplete = true
 
-            blinkToggle = false
+            countdownCancellable?.cancel()
+            countdownCancellable = nil
+            countdownValue = nil
+
+            guard !isFinished else { return }
+
+            isAcceptingAnswers = false
+            isFinished = true
+            stopTimer()
+        }
+
+        private func resetSession() {
+            stopTimer()
 
             secondsRemaining = Self.sessionDuration
             solvedCount = 0
@@ -80,14 +103,35 @@ extension SpeedPracticeView {
             questionIndex = 0
             isFinished = false
             isAcceptingAnswers = false
+
+            mistakes = []
+
             currentQuestion = Self.makeRandomQuestion()
             updateAnswerOptions()
         }
 
-        func startTimer() {
+        private func startBlinking() {
+            guard blinkCancellable == nil else { return }
+
+            blinkCancellable = Timer
+                .publish(every: 1, on: .main, in: .common)
+                .autoconnect()
+                .sink { [weak self] _ in
+                    guard let self else { return }
+                    self.blinkToggle.toggle()
+                }
+        }
+
+        private func stopBlinking() {
+            blinkCancellable?.cancel()
+            blinkCancellable = nil
+        }
+
+        private func startTimer() {
             guard timerCancellable == nil, !isFinished else { return }
 
             isAcceptingAnswers = true
+
             timerCancellable = Timer
                 .publish(every: 1, on: .main, in: .common)
                 .autoconnect()
@@ -100,46 +144,8 @@ extension SpeedPracticeView {
             countdownCancellable?.cancel()
             countdownCancellable = nil
 
-            stopBlinking()
-
             timerCancellable?.cancel()
             timerCancellable = nil
-        }
-
-        func finish() {
-            guard !didComplete else { return }
-            didComplete = true
-
-            countdownCancellable?.cancel()
-            countdownCancellable = nil
-            countdownValue = nil
-
-            stopBlinking()
-
-            guard !isFinished else { return }
-
-            isAcceptingAnswers = false
-            isFinished = true
-            stopTimer()
-        }
-
-        func startBlinking() {
-            guard blinkCancellable == nil else { return }
-
-            blinkToggle = false
-
-            blinkCancellable = Timer
-                .publish(every: 0.5, on: .main, in: .common)
-                .autoconnect()
-                .sink { [weak self] _ in
-                    self?.blinkToggle.toggle()
-                }
-        }
-
-        func stopBlinking() {
-            blinkCancellable?.cancel()
-            blinkCancellable = nil
-            blinkToggle = false
         }
 
         func beginCountdown() {
@@ -181,13 +187,27 @@ extension SpeedPracticeView {
 
             isAcceptingAnswers = false
 
+            let isCorrect = answer == currentQuestion.answer
+
             if let index = answerOptions.firstIndex(where: { $0.value == currentQuestion.answer }) {
                 answerOptions[index].state = .correct
             }
 
-            if answer != currentQuestion.answer,
+            if !isCorrect,
                let index = answerOptions.firstIndex(where: { $0.value == answer }) {
                 answerOptions[index].state = .wrong
+            }
+
+            if !isCorrect {
+                mistakes.append(
+                    PracticeMistake(
+                        left: currentQuestion.left,
+                        right: currentQuestion.right,
+                        correctAnswer: currentQuestion.answer,
+                        userAnswer: answer,
+                        mode: .speed
+                    )
+                )
             }
 
             Task {
@@ -210,7 +230,7 @@ extension SpeedPracticeView {
             questionIndex += 1
             currentQuestion = Self.makeRandomQuestion()
 
-            questionStartTime = Date() // 👈 ДОБАВИТЬ СЮДА
+            questionStartTime = Date()
 
             updateAnswerOptions()
             isAcceptingAnswers = true
@@ -220,31 +240,11 @@ extension SpeedPracticeView {
             switch option.state {
             case .normal:
                 return .white
-
             case .correct:
                 return .green.opacity(0.25)
-
             case .wrong:
                 return .red.opacity(0.25)
             }
-        }
-
-        func makeResult() -> PracticeResult {
-            let accuracy = solvedCount == 0 ? 0 : Int((Double(correctCount) / Double(solvedCount)) * 100)
-
-            return PracticeResult(
-                mode: .speed,
-                title: "Speed Results",
-                summary: "Fast recall session complete.",
-                metrics: [
-                    .init(title: "Solved", value: "\(solvedCount)"),
-                    .init(title: "Accuracy", value: "\(accuracy)%"),
-                    .init(title: "Avg Time", value: averageResponseTime),
-                    .init(title: "Best Streak", value: "\(bestStreak)")
-                ],
-                mistakes: [],
-                bossTable: nil
-            )
         }
 
         private func tick() {
@@ -252,8 +252,15 @@ extension SpeedPracticeView {
 
             secondsRemaining = max(secondsRemaining - 1, 0)
 
-            if secondsRemaining == 10 {
-                startBlinking()
+            if secondsRemaining <= 10 {
+                if blinkCancellable == nil {
+                    blinkToggle = false
+                    startBlinking()
+                }
+            }
+
+            if secondsRemaining > 10 {
+                stopBlinking()
             }
 
             if secondsRemaining == 0 {
@@ -264,17 +271,41 @@ extension SpeedPracticeView {
         private func updateAnswerOptions() {
             let answer = currentQuestion.answer
 
-            var options: Set<Int> = [answer]
+            var distractors: Set<Int> = []
 
-            while options.count < 4 {
-                let offset = Int.random(in: 1...4)
-                let candidate = answer + offset
-
-                options.insert(candidate)
+            func add(_ value: Int) {
+                guard value > 0, value != answer else { return }
+                distractors.insert(value)
             }
 
-            answerOptions = options
-                .shuffled()
+            let left = currentQuestion.left
+            let right = currentQuestion.right
+
+            for offset in 1...3 {
+                add(answer + offset)
+                add(answer - offset)
+            }
+
+            add((left + 1) * right)
+            add((left - 1) * right)
+            add(left * (right + 1))
+            add(left * (right - 1))
+
+            add(answer + left)
+            add(answer - left)
+            add(answer + right)
+            add(answer - right)
+
+            while distractors.count < 3 {
+                let offset = Int.random(in: 1...10)
+                let sign = Bool.random() ? 1 : -1
+                add(answer + offset * sign)
+            }
+            
+            var finalOptions = Array(distractors.prefix(3))
+            finalOptions.append(answer)
+
+            answerOptions = finalOptions.shuffled()
                 .map { AnswerOption(value: $0) }
         }
 
@@ -284,18 +315,48 @@ extension SpeedPracticeView {
                 right: questionRange.randomElement() ?? 2
             )
         }
+
+        func saveSession() -> PracticeSession {
+            let accuracy = solvedCount == 0
+                ? 0
+                : Int((Double(correctCount) / Double(solvedCount)) * 100)
+
+            let session = PracticeSession(
+                mode: .speed,
+                duration: Self.sessionDuration,
+                accuracy: accuracy,
+                correctAnswers: correctCount,
+                questionsCount: solvedCount,
+                longestStreak: bestStreak,
+                averageResponseTime: averageResponseTimeValue,
+                mistakes: []
+            )
+
+            let mappedMistakes = mistakes.map {
+                let m = PracticeMistake(
+                    left: $0.left,
+                    right: $0.right,
+                    correctAnswer: $0.correctAnswer,
+                    userAnswer: $0.userAnswer,
+                    mode: .speed
+                )
+                m.session = session
+                return m
+            }
+
+            session.mistakes = mappedMistakes
+
+            swiftDB.saveSession(session)
+            return session
+        }
+
+        func makeResult() -> PracticeSession {
+
+            let session = saveSession()
+
+            return session
+        }
     }
 }
 
-struct AnswerOption: Identifiable, Hashable {
-    let id = UUID()
-    let value: Int
-    var state: AnswerState = .normal
-}
-
-enum AnswerState {
-    case normal
-    case correct
-    case wrong
-}
 

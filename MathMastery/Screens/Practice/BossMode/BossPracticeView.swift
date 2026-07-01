@@ -2,9 +2,9 @@ import SwiftUI
 
 struct BossPracticeView: View {
     @StateObject var viewModel: ViewModel
-    let onComplete: (PracticeResult) -> Void
+    let onComplete: (PracticeSession) -> Void
 
-    init(viewModel: ViewModel, onComplete: @escaping (PracticeResult) -> Void) {
+    init(viewModel: ViewModel, onComplete: @escaping (PracticeSession) -> Void) {
         self._viewModel = StateObject(wrappedValue: viewModel)
         self.onComplete = onComplete
     }

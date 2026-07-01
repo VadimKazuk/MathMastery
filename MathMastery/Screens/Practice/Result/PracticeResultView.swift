@@ -2,15 +2,16 @@ import SwiftUI
 
 struct PracticeResultView: View {
     @StateObject var viewModel: ViewModel
-    let retryAction: () -> Void
-    let switchModeAction: () -> Void
-    let hubAction: () -> Void
+
+    let retryAction: (() -> Void)?
+    let switchModeAction: (() -> Void)?
+    let hubAction: (() -> Void)?
 
     init(
         viewModel: ViewModel,
-        retryAction: @escaping () -> Void,
-        switchModeAction: @escaping () -> Void,
-        hubAction: @escaping () -> Void
+        retryAction: (() -> Void)? = nil,
+        switchModeAction: (() -> Void)? = nil,
+        hubAction: (() -> Void)? = nil
     ) {
         self._viewModel = StateObject(wrappedValue: viewModel)
         self.retryAction = retryAction
@@ -37,22 +38,22 @@ struct PracticeResultView: View {
 
     private var hero: some View {
         VStack(spacing: 16) {
-            Image(systemName: viewModel.result.mode.systemImage)
+            Image(systemName: viewModel.session.mode.systemImage)
                 .font(.system(size: 42, weight: .semibold))
-                .foregroundColor(viewModel.result.mode.accentColor)
+                .foregroundColor(viewModel.session.mode.accentColor)
                 .frame(width: 92, height: 92)
                 .background {
                     Circle()
-                        .fill(viewModel.result.mode.backgroundColor)
+                        .fill(viewModel.session.mode.backgroundColor)
                 }
 
             VStack(spacing: 8) {
-                Text(viewModel.result.title)
+                Text(viewModel.title)
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
 
-                Text(viewModel.result.summary)
+                Text(viewModel.summary)
                     .font(.system(size: 17, weight: .regular, design: .rounded))
                     .foregroundColor(Color.primary.opacity(0.68))
                     .multilineTextAlignment(.center)
@@ -75,12 +76,11 @@ struct PracticeResultView: View {
             ],
             spacing: 12
         ) {
-            ForEach(viewModel.result.metrics) { metric in
+            ForEach(viewModel.metrics) { metric in
                 VStack(spacing: 8) {
                     Text(metric.value)
                         .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundColor(AppColor.commonAccentBlue)
-
                     Text(metric.title)
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .tracking(1.1)
@@ -99,64 +99,87 @@ struct PracticeResultView: View {
 
     @ViewBuilder
     private var mistakesSection: some View {
-        if !viewModel.result.mistakes.isEmpty {
+        if !viewModel.session.mistakes.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
                 Text(viewModel.mistakeTitle)
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
 
-                ForEach(viewModel.result.mistakes, id: \.self) { mistake in
-                    Text(mistake)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.primary.opacity(0.72))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(14)
-                        .background {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.white)
+                ForEach(viewModel.session.mistakes) { mistake in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(mistake.question)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        HStack(spacing: 6) {
+                            Text("Your:")
+                                .foregroundColor(.secondary)
+                            Text("\(mistake.userAnswer)")
+                                .foregroundColor(.red)
+                            Spacer()
+                            Text("Correct:")
+                                .foregroundColor(.secondary)
+                            Text("\(mistake.correctAnswer)")
+                                .foregroundColor(.green)
                         }
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.white)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
+    @ViewBuilder
     private var actions: some View {
         VStack(spacing: 12) {
-            Button(action: retryAction) {
-                Text("Retry \(viewModel.result.mode.title)")
-                    .font(.system(size: 19, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 58)
-                    .background {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(AppColor.commonAccentBlue)
-                    }
-            }
-            .buttonStyle(.plain)
 
-            Button(action: switchModeAction) {
-                Text("Switch Mode")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(AppColor.commonAccentBlue)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.white)
-                    }
+            if let retryAction {
+                Button(action: retryAction) {
+                    Text("Retry \(viewModel.session.mode.title)")
+                        .font(.system(size: 19, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 58)
+                        .background {
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(AppColor.commonAccentBlue)
+                        }
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
-            Button(action: hubAction) {
-                Text("Return to Practice Hub")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.primary.opacity(0.68))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
+            if let switchModeAction {
+                Button(action: switchModeAction) {
+                    Text("Switch Mode")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(AppColor.commonAccentBlue)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background {
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.white)
+                        }
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+
+            if let hubAction {
+                Button(action: hubAction) {
+                    Text("Return to Practice Hub")
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.primary.opacity(0.68))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 }

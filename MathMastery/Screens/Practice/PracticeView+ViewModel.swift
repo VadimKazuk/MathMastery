@@ -43,7 +43,7 @@ extension PracticeView {
             }
         }
 
-        func showResult(_ result: PracticeResult) {
+        func showResult(_ result: PracticeSession) {
             path.append(.result(result))
         }
 

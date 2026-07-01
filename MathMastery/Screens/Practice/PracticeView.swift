@@ -44,13 +44,13 @@ struct PracticeView: View {
                 destinationView(for: route)
             }
             .safeAreaInset(edge: .bottom) {
-                        if viewModel.selectedMode != nil {
-                            startButton
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 8)
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
-                    }
+                if viewModel.selectedMode != nil {
+                    startButton
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 8)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
         }
     }
 }
@@ -60,7 +60,7 @@ struct PracticeView: View {
 private extension PracticeView {
     var contentView: some View {
         VStack(alignment: .leading, spacing: 28) {
-            statsSection
+            //            statsSection
             titleSection
             modesGrid
         }
@@ -91,11 +91,11 @@ private extension PracticeView {
     var titleSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Practice")
-                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(Color.primary)
 
             Text("Choose your training grounds and sharpen your mind.")
-                .font(.system(size: 22, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular, design: .rounded))
                 .foregroundColor(Color.primary.opacity(0.72))
                 .lineSpacing(6)
         }
@@ -119,20 +119,13 @@ private extension PracticeView {
         Button {
             viewModel.startSelectedMode()
         } label: {
-            HStack(spacing: 14) {
-                Text("Start Practice")
-                    .font(.system(size: 23, weight: .regular, design: .rounded))
-            }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 55)
-            .background {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(AppColor.commonAccentBlue)
-            }
-            .shadow(color: AppColor.commonAccentBlue.opacity(0.22), radius: 16, x: 0, y: 8)
+            Text("Start Practice")
+                .font(.system(size: 23, weight: .regular, design: .rounded))
+                .frame(maxWidth: .infinity)
+                .frame(height: 45)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassProminent)
+        .tint(AppColor.commonAccentBlue)
     }
 
     func statCard(
@@ -185,14 +178,14 @@ private extension PracticeView {
         } label: {
             VStack(spacing: 26) {
                 ZStack(alignment: .topTrailing) {
-//                    LottieView(name: mode.lottieImage, loop: true)
-//                        .frame(width: 40, height: 40)
-//                        .padding(25)
-//                        .background {
-//                            Circle()
-//                                .fill(mode.backgroundColor)
-//                        }
-//                        .frame(maxWidth: .infinity)
+                    //                    LottieView(name: mode.lottieImage, loop: true)
+                    //                        .frame(width: 40, height: 40)
+                    //                        .padding(25)
+                    //                        .background {
+                    //                            Circle()
+                    //                                .fill(mode.backgroundColor)
+                    //                        }
+                    //                        .frame(maxWidth: .infinity)
                     Image(systemName: mode.systemImage)
                         .font(.system(size: 39, weight: .regular))
                         .foregroundColor(mode.accentColor)
@@ -206,7 +199,7 @@ private extension PracticeView {
 
                 VStack(spacing: 14) {
                     Text(mode.title)
-                        .font(.system(size: 27, weight: .bold, design: .rounded))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundColor(Color.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
@@ -247,7 +240,7 @@ private extension PracticeView {
         switch route {
         case .speed:
             SpeedPracticeView(
-                viewModel: .init(),
+                viewModel: .init(serviceContainer: serviceContainer),
                 onComplete: { result in
                     viewModel.showResult(result)
                 }
@@ -255,18 +248,20 @@ private extension PracticeView {
             .toolbar(.hidden, for: .tabBar)
         case .classic:
             ClassicPracticeView(
-                viewModel: .init(),
+                viewModel: .init(serviceContainer: serviceContainer),
                 onComplete: { result in
                     viewModel.showResult(result)
                 }
             )
+            .toolbar(.hidden, for: .tabBar)
         case .survival:
             SurvivalPracticeView(
-                viewModel: .init(),
+                viewModel: .init(serviceContainer: serviceContainer),
                 onComplete: { result in
                     viewModel.showResult(result)
                 }
             )
+            .toolbar(.hidden, for: .tabBar)
         case .boss:
             BossPracticeView(
                 viewModel: .init(),
@@ -274,11 +269,12 @@ private extension PracticeView {
                     viewModel.showResult(result)
                 }
             )
-        case .result(let result):
+            .toolbar(.hidden, for: .tabBar)
+        case .result(let session):
             PracticeResultView(
-                viewModel: .init(result: result),
+                viewModel: .init(serviceContainer: serviceContainer, session: session),
                 retryAction: {
-                    viewModel.retry(result.mode)
+                    viewModel.retry(session.mode)
                 },
                 switchModeAction: {
                     viewModel.returnToHub()
@@ -287,6 +283,7 @@ private extension PracticeView {
                     viewModel.returnToHub()
                 }
             )
+            .toolbar(.hidden, for: .tabBar)
         }
     }
 }

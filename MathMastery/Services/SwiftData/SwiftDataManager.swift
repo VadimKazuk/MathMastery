@@ -1,0 +1,71 @@
+import SwiftData
+import Foundation
+
+protocol SwiftDataService {
+    func insert<T: PersistentModel>(_ model: T)
+    func delete<T: PersistentModel>(_ model: T)
+    func save() throws
+    func fetch<T: PersistentModel>(_ descriptor: FetchDescriptor<T>) throws -> [T]
+
+    func saveSession(_ session: PracticeSession)
+    func fetchSessions() -> [PracticeSession]
+}
+
+final class SwiftDataManager: SwiftDataService {
+
+    private let container: ModelContainer
+    private let context: ModelContext
+
+    init() {
+        do {
+            self.container = try ModelContainer(
+                for: PracticeSession.self,
+                     PracticeMistake.self
+            )
+            self.context = container.mainContext
+        } catch {
+            fatalError("❌SwiftData container failed: \(error)")
+        }
+    }
+
+    // MARK: - Generic CRUD
+
+    func insert<T: PersistentModel>(_ model: T) {
+        context.insert(model)
+    }
+
+    func delete<T: PersistentModel>(_ model: T) {
+        context.delete(model)
+    }
+
+    func save() throws {
+        try context.save()
+    }
+
+    func fetch<T: PersistentModel>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
+        try context.fetch(descriptor)
+    }
+
+    // MARK: - Domain specific
+
+    func saveSession(_ session: PracticeSession) {
+        context.insert(session)
+
+        do {
+            try context.save()
+            print("✅ SAVED SESSION")
+        } catch {
+            print("❌ SAVE ERROR:", error)
+        }
+    }
+
+    func fetchSessions() -> [PracticeSession] {
+        let descriptor = FetchDescriptor<PracticeSession>(
+            sortBy: [
+                SortDescriptor(\.date, order: .reverse)
+            ]
+        )
+
+        return (try? context.fetch(descriptor)) ?? []
+    }
+}

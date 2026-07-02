@@ -13,14 +13,33 @@ extension ProfileView {
         @Published var fastestTime: Double = 0.0
         @Published var totalSessions: Int = 0
 
+        @Published private(set) var profile = UserProfile()
+
         private let serviceContainer: ServiceContainer
         private let swiftDB: SwiftDataService
+        private let accountService: AccountService
 
         private var cancellables = Set<AnyCancellable>()
 
+        var avatarName: String {
+            "img_profile_\(profile.avatarId)"
+        }
+
+        var displayName: String {
+            profile.name.isEmpty ? "Guest" : profile.name
+        }
+
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
+            self.accountService = serviceContainer.resolve(AccountService.self)
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
+
+            profile = accountService.profile
+
+            accountService.$profile
+                .receive(on: DispatchQueue.main)
+                .assign(to: &$profile)
+
             loadSessions()
         }
 

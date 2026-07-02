@@ -230,3 +230,29 @@ final class PracticeSession {
     }
 }
 
+enum MistakeLevel {
+    case none
+    case perfect
+    case medium
+    case orange
+    case hard
+
+    var color: Color {
+        switch self {
+        case .none:
+            return Color.gray.opacity(0.10)
+
+        case .perfect:
+            return Color.green.opacity(0.25)
+
+        case .medium:
+            return Color.yellow.opacity(0.25)
+
+        case .orange:
+            return Color.orange.opacity(0.21)
+
+        case .hard:
+            return Color.red.opacity(0.32)
+        }
+    }
+}

@@ -21,6 +21,9 @@ struct LearnView: View {
             }
             .toolbarBackground(Color.white, for: .navigationBar)
         }
+        .onAppear {
+            viewModel.loadSessions()
+        }
     }
 }
 
@@ -196,7 +199,7 @@ private extension LearnView {
             Button {
                 print("Profile tapped")
             } label: {
-                Image("img_profile_\(Int.random(in: 1...12))")
+                Image(viewModel.avatarName)
                     .resizable()
                     .scaledToFill()
                     .frame(width: 35, height: 35)
@@ -279,18 +282,32 @@ private struct MultiplicationGridView: View {
                 )
 
                 ForEach(viewModel.numbers.indices, id: \.self) { columnIndex in
+                    let level = viewModel.mistakeLevel(
+                        left: viewModel.numbers[rowIndex],
+                        right: viewModel.numbers[columnIndex]
+                    )
+//                    MultiplicationCell(
+//                        text: viewModel.cellText(rowIndex: rowIndex, columnIndex: columnIndex),
+//                        color: viewModel.cellColor(rowIndex: rowIndex, columnIndex: columnIndex),
+//                        textColor: viewModel.cellTextColor(rowIndex: rowIndex, columnIndex: columnIndex),
+//                        borderColor: viewModel.cellBorderColor(rowIndex: rowIndex, columnIndex: columnIndex),
+//                        cellSize: cellSize,
+//                        onCenterChange: { center in
+//                            viewModel.updateCellCenter(
+//                                center,
+//                                rowIndex: rowIndex,
+//                                columnIndex: columnIndex
+//                            )
+//                        }
+//                    )
                     MultiplicationCell(
                         text: viewModel.cellText(rowIndex: rowIndex, columnIndex: columnIndex),
-                        color: viewModel.cellColor(rowIndex: rowIndex, columnIndex: columnIndex),
+                        color: level.color,
                         textColor: viewModel.cellTextColor(rowIndex: rowIndex, columnIndex: columnIndex),
                         borderColor: viewModel.cellBorderColor(rowIndex: rowIndex, columnIndex: columnIndex),
                         cellSize: cellSize,
                         onCenterChange: { center in
-                            viewModel.updateCellCenter(
-                                center,
-                                rowIndex: rowIndex,
-                                columnIndex: columnIndex
-                            )
+                            viewModel.updateCellCenter(center, rowIndex: rowIndex, columnIndex: columnIndex)
                         }
                     )
                 }

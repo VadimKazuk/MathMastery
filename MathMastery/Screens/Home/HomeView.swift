@@ -26,7 +26,7 @@ struct HomeView: View {
                     Button {
                         print("Profile tapped")
                     } label: {
-                        Image("img_profile_\(Int.random(in: 1...12))")
+                        Image(viewModel.avatarName)
                             .resizable()
                             .scaledToFill()
                             .frame(width: 35, height: 35)

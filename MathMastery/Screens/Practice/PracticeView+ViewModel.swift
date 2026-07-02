@@ -4,6 +4,8 @@ import SwiftUI
 extension PracticeView {
     final class ViewModel: ObservableObject {
         private let serviceContainer: ServiceContainer
+        private let accountService: AccountService
+
         private var cancellables = Set<AnyCancellable>()
 
         let currentStreak = 12
@@ -15,8 +17,13 @@ extension PracticeView {
 
         @Published var showStartButton = false
 
+        var avatarName: String {
+            "img_profile_\(accountService.profile.avatarId)"
+        }
+
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
+            self.accountService = serviceContainer.resolve(AccountService.self)
         }
 
         func selectMode(_ mode: PracticeMode) {

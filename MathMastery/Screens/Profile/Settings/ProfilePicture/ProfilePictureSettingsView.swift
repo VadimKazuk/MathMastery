@@ -1,19 +1,15 @@
 import SwiftUI
 import Combine
 
-// MARK: - Avatar Model
 struct AvatarOption: Identifiable, Hashable {
     let id: Int
     let imageName: String
 }
 
-// MARK: - View Model Extension
 extension ProfilePictureSettingsView {
     final class ViewModel: ObservableObject {
-        private let serviceContainer: ServiceContainer
-        private var cancellables = Set<AnyCancellable>()
+        private let accountService: AccountService
 
-        // 12 Profile picture options mapped to assets img_profile_1...img_profile_12
         @Published var avatarOptions: [AvatarOption] = (1...12).map {
             AvatarOption(id: $0, imageName: "img_profile_\($0)")
         }
@@ -21,22 +17,24 @@ extension ProfilePictureSettingsView {
         @Published var selectedAvatarId: Int = 1
 
         init(serviceContainer: ServiceContainer) {
-            self.serviceContainer = serviceContainer
+            self.accountService = serviceContainer.resolve(AccountService.self)
+
+            selectedAvatarId = accountService.profile.avatarId
         }
 
         func saveAvatarChanges() {
-            print("Saved avatar asset: img_profile_\(selectedAvatarId)")
+            var profile = accountService.profile
+            profile.avatarId = selectedAvatarId
+            accountService.profile = profile
         }
     }
 }
 
-// MARK: - Main View
 struct ProfilePictureSettingsView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
     @Environment(\.dismiss) private var dismiss
 
-    // Changed from 2 flexible items to 4 columns to achieve the 4x3 look for 12 items
     private let columns = [
         GridItem(.flexible(), spacing: 12),
         GridItem(.flexible(), spacing: 12),
@@ -48,8 +46,6 @@ struct ProfilePictureSettingsView: View {
         VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
-
-                    // MARK: - Current Avatar Preview Header
                     VStack(spacing: 12) {
                         ZStack(alignment: .bottomTrailing) {
                             Image("img_profile_\(viewModel.selectedAvatarId)")
@@ -67,7 +63,6 @@ struct ProfilePictureSettingsView: View {
                     }
                     .padding(.top, 16)
 
-                    // MARK: - Grid Section Header
                     HStack {
                         Text("Choose your hero")
                             .font(.system(size: 20, weight: .bold))
@@ -78,7 +73,6 @@ struct ProfilePictureSettingsView: View {
                     }
                     .padding(.horizontal, 4)
 
-                    // MARK: - Avatar Selector Grid (4x3 Layout)
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(viewModel.avatarOptions) { avatar in
                             Button {
@@ -90,7 +84,6 @@ struct ProfilePictureSettingsView: View {
                                     .frame(maxWidth: .infinity)
                                     .aspectRatio(1.0, contentMode: .fit)
                                     .background(Color(uiColor: .systemGray6))
-                                    // Decreased corner radius slightly (from 24 to 14) so small 4-column cards look cleaner
                                     .clipShape(RoundedRectangle(cornerRadius: 14))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 14)
@@ -102,7 +95,6 @@ struct ProfilePictureSettingsView: View {
                                                 Image(systemName: "checkmark.circle.fill")
                                                     .foregroundColor(.blue)
                                                     .background(Circle().fill(Color.white))
-                                                    // Decreased system icon size slightly to scale with smaller squares
                                                     .font(.system(size: 16))
                                                     .padding(6)
                                             }
@@ -114,8 +106,6 @@ struct ProfilePictureSettingsView: View {
                             .buttonStyle(PlainButtonStyle())
                         }
                     }
-
-                    // MARK: - Information Banner
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: "info.circle")
                             .foregroundColor(.blue)
@@ -136,8 +126,6 @@ struct ProfilePictureSettingsView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)
             }
-
-            // MARK: - Bottom Save CTA
             VStack {
                 Button {
                     viewModel.saveAvatarChanges()
@@ -161,12 +149,12 @@ struct ProfilePictureSettingsView: View {
             .padding(.bottom, 16)
             .background(Color(uiColor: .systemBackground))
         }
-        .navigationTitle("Change Avatar")
+        .navigationTitle("Change Profile Picture")
+        .background(Color(red: 0.98, green: 0.98, blue: 1.0))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
 
-// MARK: - Preview Mock Stubs
 #Preview {
     NavigationStack {
         ProfilePictureSettingsView(viewModel: .init(serviceContainer: PreviewServiceContainer()))

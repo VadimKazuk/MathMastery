@@ -31,7 +31,7 @@ enum AccentColor: String, CaseIterable, Identifiable {
         switch self {
         case .blue: return .blue
         case .green: return .green
-        case .brown: return .brown // Substitute with your asset palette asset color
+        case .brown: return .brown
         case .orange: return .orange
         case .purple: return .purple
         case .pink: return .pink
@@ -92,18 +92,20 @@ struct SettingsView: View {
                 // MARK: - Account Section
                 Section(header: Text("ACCOUNT")) {
                     NavigationLink {
-                        ProfilePictureSettingsView(viewModel: .init(serviceContainer: serviceContainer))
+                        ProfilePictureSettingsView(
+                            viewModel: .init(serviceContainer: serviceContainer)
+                        )
                     } label: {
-                        Text("Change Avatar")
+                        Text("Profile Picture")
                     }
-//                    NavigationLink {
-//                        SettingsView(viewModel: .init(serviceContainer: serviceContainer))
-//                    } label: {
-//                        Text("Profile Information")
-//                    }
-                    NavigationLink(destination: Text("Profile Information View")) {
+                    NavigationLink {
+                        ProfileInfoSettingsView(
+                            viewModel: .init(serviceContainer: serviceContainer)
+                        )
+                    } label: {
                         Text("Profile Information")
                     }
+                   
                 }
 
                 // MARK: - Learning Section
@@ -190,49 +192,49 @@ struct SettingsView: View {
                 }
 
                 // MARK: - Appearance Section
-                Section(header: Text("APPEARANCE")) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Theme")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Picker("Theme", selection: $viewModel.selectedTheme) {
-                            ForEach(AppTheme.allCases) { theme in
-                                Text(theme.rawValue).tag(theme)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Accent Color")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-
-                        HStack(spacing: 12) {
-                            ForEach(AccentColor.allCases) { accent in
-                                ZStack {
-                                    Circle()
-                                        .fill(accent.color)
-                                        .frame(width: 32, height: 32)
-                                        .onTapGesture {
-                                            viewModel.selectedAccentColor = accent
-                                        }
-
-                                    if viewModel.selectedAccentColor == accent {
-                                        Circle()
-                                            .stroke(Color.primary, lineWidth: 2)
-                                            .frame(width: 38, height: 38)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-
-                    Toggle("Reduce Animations", isOn: $viewModel.reduceAnimations)
-                }
+//                Section(header: Text("APPEARANCE")) {
+//                    VStack(alignment: .leading, spacing: 8) {
+//                        Text("Theme")
+//                            .font(.subheadline)
+//                            .foregroundColor(.secondary)
+//                        Picker("Theme", selection: $viewModel.selectedTheme) {
+//                            ForEach(AppTheme.allCases) { theme in
+//                                Text(theme.rawValue).tag(theme)
+//                            }
+//                        }
+//                        .pickerStyle(.segmented)
+//                    }
+//                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+//
+//                    VStack(alignment: .leading, spacing: 8) {
+//                        Text("Accent Color")
+//                            .font(.subheadline)
+//                            .foregroundColor(.secondary)
+//
+//                        HStack(spacing: 12) {
+//                            ForEach(AccentColor.allCases) { accent in
+//                                ZStack {
+//                                    Circle()
+//                                        .fill(accent.color)
+//                                        .frame(width: 32, height: 32)
+//                                        .onTapGesture {
+//                                            viewModel.selectedAccentColor = accent
+//                                        }
+//
+//                                    if viewModel.selectedAccentColor == accent {
+//                                        Circle()
+//                                            .stroke(Color.primary, lineWidth: 2)
+//                                            .frame(width: 38, height: 38)
+//                                    }
+//                                }
+//                            }
+//                        }
+//                        .padding(.vertical, 4)
+//                    }
+//                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+//
+//                    Toggle("Reduce Animations", isOn: $viewModel.reduceAnimations)
+//                }
 
                 // MARK: - Data & Privacy Section
                 Section(header: Text("DATA & PRIVACY")) {

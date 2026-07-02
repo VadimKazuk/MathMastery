@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
+    @State private var selectedSession: PracticeSession?
 
     init(viewModel: ViewModel) {
         self._viewModel = StateObject(wrappedValue: viewModel)
@@ -63,6 +64,11 @@ struct ProfileView: View {
                 }
             }
             .toolbarBackground(Color.white, for: .navigationBar)
+            .sheet(item: $selectedSession) { session in
+                PracticeResultView(
+                    viewModel: .init(serviceContainer: serviceContainer, session: session)
+                )
+            }
         }
         .task {
             viewModel.loadSessions()
@@ -80,15 +86,14 @@ struct ProfileView: View {
                     )
                     .frame(width: 118, height: 118)
 
-                Image("img_profile_\(Int.random(in: 1...12))")
+                Image(viewModel.avatarName)
                     .resizable()
                     .scaledToFill()
                     .frame(width: 104, height: 104)
                     .clipShape(Circle())
-
             }
 
-            Text("Alex Mercer")
+            Text(viewModel.displayName)
                 .font(.system(size: 26, weight: .bold, design: .rounded))
 
             Text("MATHEMATICIAN APPRENTICE")
@@ -179,7 +184,9 @@ struct ProfileView: View {
                     .font(.system(size: 18, weight: .bold, design: .rounded))
 
                 ForEach(viewModel.sessions.prefix(3), id: \.id) { session in
-                    HistoryRow(session: session)  // теперь без onTap в превью
+                    HistoryRow(session: session) {_ in
+                        selectedSession = session
+                    }
                 }
             }
         }

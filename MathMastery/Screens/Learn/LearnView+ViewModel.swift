@@ -3,25 +3,69 @@ import SwiftUI
 
 extension LearnView {
     final class ViewModel: ObservableObject {
-
+        private let swiftDB: SwiftDataService
         static let gridCoordinateSpaceName = "GRID"
 
         private let serviceContainer: ServiceContainer
+        private let accountService: AccountService
+
         private var cancellables = Set<AnyCancellable>()
         private var cellCenters: [SelectedCell: CGPoint] = [:]
 
-        let numbers = Array(1...9)
-        let focusTables = Array(1...9)
+        @Published var sessions: [PracticeSession] = []
+
+        let numbers = Array(2...9)
+        let focusTables = Array(2...9)
 
         @Published var mode: LearnMode = .explore
         @Published var selectedRow: Int?
         @Published var selectedColumn: Int?
-        @Published private(set) var focusTable: Int = 1
+        @Published private(set) var focusTable: Int = 2
         @Published private(set) var activeCell: SelectedCell?
+
+        var avatarName: String {
+            "img_profile_\(accountService.profile.avatarId)"
+        }
 
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
-            setFocusTable(1)
+            self.accountService = serviceContainer.resolve(AccountService.self)
+            self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
+            setFocusTable(2)
+            loadSessions()
+        }
+
+        func loadSessions() {
+            sessions = swiftDB.fetchSessions()
+        }
+
+        func normalized(_ a: Int, _ b: Int) -> (Int, Int) {
+            a < b ? (a, b) : (b, a)
+        }
+
+        func mistakeLevel(left: Int, right: Int) -> MistakeLevel {
+            let target = normalized(left, right)
+
+            let mistakesForCell = sessions
+                .flatMap { $0.mistakes }
+                .filter {
+                    normalized($0.left, $0.right) == target
+                }
+
+            let count = mistakesForCell.count
+
+            switch count {
+            case 0:
+                return .none
+            case 1:
+                return .perfect
+            case 2...3:
+                return .medium
+            case 4...5:
+                return .orange
+            default:
+                return .hard
+            }
         }
 
         var isFocusMode: Bool {
@@ -61,19 +105,19 @@ extension LearnView {
             if mode == .explore {
                 clearSelection()
             } else if selectedRow == nil {
-                setFocusTable(1)
+                setFocusTable(2)
             }
         }
 
         func setFocusTable(_ number: Int) {
             guard let rowIndex = numbers.firstIndex(of: number),
-                  let columnIndex = numbers.firstIndex(of: 1) else {
+                  let columnIndex = numbers.firstIndex(of: 2) else {
                 return
             }
 
             focusTable = number
             activeCell = SelectedCell(row: rowIndex, column: columnIndex)
-            selectCell(row: number, column: 1)
+            selectCell(row: number, column: 2)
         }
 
         func selectCell(row: Int, column: Int) {
@@ -135,7 +179,7 @@ extension LearnView {
             }
 
             if isActiveCell(rowIndex: rowIndex, columnIndex: columnIndex) {
-                return Color.white
+                return Color.primary
             }
 
             guard activeCell != nil else {
@@ -143,7 +187,8 @@ extension LearnView {
             }
 
             if isCellOnMultiplierPath(rowIndex: rowIndex, columnIndex: columnIndex) {
-                return Color.primary
+//                return Color.primary
+                return Color.gray.opacity(0.45)
             }
 
             return Color.gray.opacity(0.45)
@@ -174,7 +219,7 @@ extension LearnView {
                 return Color.clear
             }
 
-            return Color.gray.opacity(0.35)
+            return Color.gray
         }
 
         func headerColor(rowIndex: Int?, columnIndex: Int?) -> Color {

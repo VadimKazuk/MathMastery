@@ -14,7 +14,14 @@ final class DefaultServiceContainer: ServiceContainer {
     private func initServices() {
         Deferred {
             Future<Bool, Never> { [weak self] promise in
-                let _ = UserDefaultsStorageService()
+                let storageService = UserDefaultsStorageService()
+
+                let accountService = AccountService(storageService: storageService)
+                self?.register(
+                    type: AccountService.self,
+                    as: .singleton,
+                    factory: accountService
+                )
 
                 self?.register(
                     type: KeychainService.self,

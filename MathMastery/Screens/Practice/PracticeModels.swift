@@ -117,7 +117,7 @@ struct PracticeResult: Hashable {
     let title: String
     let summary: String
     let metrics: [PracticeResultMetric]
-    let mistakes: [PracticeMistake]
+    let answers: [PracticeAnswer]
     let bossTable: Int?
 }
 
@@ -133,11 +133,11 @@ enum AnswerState {
     case wrong
 }
 
-
 @Model
-final class PracticeMistake {
+final class PracticeAnswer {
 
-    var id: UUID
+    var id: UUID = UUID()
+
     var left: Int
     var right: Int
 
@@ -145,7 +145,7 @@ final class PracticeMistake {
     var userAnswer: Int
 
     var modeRaw: String
-    var date: Date
+    var date: Date = Date()
 
     var session: PracticeSession?
 
@@ -156,21 +156,19 @@ final class PracticeMistake {
         userAnswer: Int,
         mode: PracticeMode
     ) {
-        self.id = UUID()
         self.left = left
         self.right = right
         self.correctAnswer = correctAnswer
         self.userAnswer = userAnswer
         self.modeRaw = mode.rawValue
-        self.date = Date()
-    }
-
-    var question: String {
-        "\(left) × \(right)"
     }
 
     var isCorrect: Bool {
         userAnswer == correctAnswer
+    }
+
+    var question: String {
+        "\(left) × \(right)"
     }
 }
 
@@ -184,31 +182,26 @@ final class PracticeSession {
     var date: Date
     var modeRaw: String
 
-    // metadata
-    var duration: Int?        // Speed mode (seconds)
-    var difficulty: String?   // future use
+    var duration: Int?
+    var difficulty: String?
 
-    // stats (вынесены сюда для простоты и скорости fetch)
-    var accuracy: Int
     var correctAnswers: Int
     var questionsCount: Int
     var longestStreak: Int
     var averageResponseTime: Double?
 
-    // relationships
     @Relationship(deleteRule: .cascade)
-    var mistakes: [PracticeMistake]
+    var answers: [PracticeAnswer]
 
     init(
         mode: PracticeMode,
         duration: Int? = nil,
         difficulty: String? = nil,
-        accuracy: Int,
         correctAnswers: Int,
         questionsCount: Int,
         longestStreak: Int,
         averageResponseTime: Double? = nil,
-        mistakes: [PracticeMistake] = []
+        answers: [PracticeAnswer] = []
     ) {
         self.id = UUID()
         self.date = Date()
@@ -217,16 +210,30 @@ final class PracticeSession {
         self.duration = duration
         self.difficulty = difficulty
 
-        self.accuracy = accuracy
         self.correctAnswers = correctAnswers
         self.questionsCount = questionsCount
         self.longestStreak = longestStreak
         self.averageResponseTime = averageResponseTime
-        self.mistakes = mistakes
+        self.answers = answers
     }
 
     var mode: PracticeMode {
         PracticeMode(rawValue: modeRaw) ?? .classic
+    }
+    
+    var accuracy: Int {
+        guard questionsCount > 0 else { return 0 }
+
+        let value = Int((Double(correctAnswers) / Double(questionsCount)) * 100)
+        return value
+    }
+
+    var mistakesCount: Int {
+        answers.reduce(0) { $0 + ($1.isCorrect ? 0 : 1) }
+    }
+
+    var hasMistakes: Bool {
+        mistakesCount > 0
     }
 }
 
@@ -234,7 +241,7 @@ enum MistakeLevel {
     case none
     case perfect
     case medium
-    case orange
+    case high
     case hard
 
     var color: Color {
@@ -248,11 +255,13 @@ enum MistakeLevel {
         case .medium:
             return Color.yellow.opacity(0.25)
 
-        case .orange:
+        case .high:
             return Color.orange.opacity(0.21)
 
         case .hard:
             return Color.red.opacity(0.32)
         }
     }
+
 }
+

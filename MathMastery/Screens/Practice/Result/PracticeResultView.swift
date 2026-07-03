@@ -99,13 +99,13 @@ struct PracticeResultView: View {
 
     @ViewBuilder
     private var mistakesSection: some View {
-        if !viewModel.session.mistakes.isEmpty {
+        if !viewModel.mistakes.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
                 Text(viewModel.mistakeTitle)
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
 
-                ForEach(viewModel.session.mistakes) { mistake in
+                ForEach(viewModel.mistakes) { mistake in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(mistake.question)
                             .font(.system(size: 15, weight: .semibold, design: .rounded))

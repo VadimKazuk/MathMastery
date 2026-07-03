@@ -3,145 +3,238 @@ import SwiftUI
 
 extension LearnView {
     final class ViewModel: ObservableObject {
-        private let swiftDB: SwiftDataService
+
         static let gridCoordinateSpaceName = "GRID"
 
+        // MARK: - Dependencies
+        private let swiftDB: SwiftDataService
         private let serviceContainer: ServiceContainer
         private let accountService: AccountService
 
-        private var cancellables = Set<AnyCancellable>()
-        private var cellCenters: [SelectedCell: CGPoint] = [:]
+        // MARK: - Engine
+        private let engine = LearnEngine()
+        private var state: LearnEngine.State = .init(
+            answersIndex: [:],
+            gridState: []
+        )
 
-        @Published var sessions: [PracticeSession] = []
+        // MARK: - Data
+        @Published private(set) var sessions: [PracticeSession] = []
+        @Published private(set) var gridState: [[CellViewState]] = []
 
-        let numbers = Array(2...9)
-        let focusTables = Array(2...9)
-
+        // MARK: - UI State
         @Published var mode: LearnMode = .explore
         @Published var selectedRow: Int?
         @Published var selectedColumn: Int?
-        @Published private(set) var focusTable: Int = 2
+        @Published private(set) var focusTable: Int?
         @Published private(set) var activeCell: SelectedCell?
+        @Published var isFocusPanelVisible: Bool = true
 
-        var avatarName: String {
-            "img_profile_\(accountService.profile.avatarId)"
-        }
+        private var cellCenters: [SelectedCell: CGPoint] = [:]
 
+        let numbers = Array(2...9)
+
+        // MARK: - Init
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
             self.accountService = serviceContainer.resolve(AccountService.self)
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
-            setFocusTable(2)
+
+            clearSelection()
             loadSessions()
         }
 
-        func loadSessions() {
-            sessions = swiftDB.fetchSessions()
-        }
-
-        func normalized(_ a: Int, _ b: Int) -> (Int, Int) {
-            a < b ? (a, b) : (b, a)
-        }
-
-        func mistakeLevel(left: Int, right: Int) -> MistakeLevel {
-            let target = normalized(left, right)
-
-            let mistakesForCell = sessions
-                .flatMap { $0.mistakes }
-                .filter {
-                    normalized($0.left, $0.right) == target
-                }
-
-            let count = mistakesForCell.count
-
-            switch count {
-            case 0:
-                return .none
-            case 1:
-                return .perfect
-            case 2...3:
-                return .medium
-            case 4...5:
-                return .orange
-            default:
-                return .hard
-            }
+        // MARK: - Derived
+        var avatarName: String {
+            "img_profile_\(accountService.profile.avatarId)"
         }
 
         var isFocusMode: Bool {
             mode == .focus
         }
 
-        var selectedText: String {
-            guard let row = selectedRow,
-                  let column = selectedColumn else {
-                return "Select a cell"
-            }
-
-            return "\(row) × \(column) = \(row * column)"
+        var columnSelection: Int? {
+            selectedColumn
         }
 
+        // MARK: - Equation UI
         var equationTitle: String {
-            guard let row = selectedRow,
-                  let column = selectedColumn else {
+            guard
+                let row = selectedRow,
+                let col = selectedColumn
+            else {
                 return "Select a cell"
             }
 
-            return "\(row) × \(column) = \(row * column)"
+            return "\(row) × \(col) = \(row * col)"
         }
 
         var equationSubtitle: String {
-            guard let row = selectedRow,
-                  let column = selectedColumn else {
+            guard
+                let row = selectedRow,
+                let col = selectedColumn
+            else {
                 return "Tap any cell to begin"
             }
 
-            return "\(row) groups of \(column) makes \(row * column)"
+            return "\(row) groups of \(col) makes \(row * col)"
         }
 
+        var equationAccuracyText: String {
+            guard
+                let row = selectedRow,
+                let col = selectedColumn
+            else {
+                return "ACTIVE LEARNING"
+            }
+
+            let stats = stats(for: row, col)
+
+            guard stats.total > 0 else {
+                return "ACTIVE LEARNING"
+            }
+
+            let percent = Int((Double(stats.correct) / Double(stats.total) * 100).rounded())
+            return "\(percent)% ACCURACY"
+        }
+
+        var currentEquationLevel: MistakeLevel {
+            guard
+                let row = selectedRow,
+                let col = selectedColumn
+            else {
+                return .none
+            }
+
+            let s = stats(for: row, col)
+            return CellEngine.level(correct: s.correct, total: s.total)
+        }
+
+        // MARK: - Load
+        func loadSessions() {
+            sessions = swiftDB.fetchSessions()
+            rebuildState()
+        }
+
+        private func rebuildState() {
+            state = engine.makeState(from: sessions)
+            gridState = state.gridState
+        }
+
+        // MARK: - Stats
+        private func stats(for row: Int, _ col: Int, limit: Int = 5) -> (correct: Int, total: Int) {
+
+            let key = SelectedCell(row: min(row, col),
+                                   column: max(row, col))
+
+            guard let answers = state.answersIndex[key] else {
+                return (0, 0)
+            }
+
+            let slice = answers.prefix(limit)
+
+            return (
+                correct: slice.filter { $0.isCorrect }.count,
+                total: slice.count
+            )
+        }
+
+        // MARK: - Mode
         func selectMode(_ mode: LearnMode) {
             self.mode = mode
 
+            if mode == .focus {
+                isFocusPanelVisible = false
+            }
+
             if mode == .explore {
                 clearSelection()
-            } else if selectedRow == nil {
-                setFocusTable(2)
+                isFocusPanelVisible = true
             }
         }
 
-        func setFocusTable(_ number: Int) {
-            guard let rowIndex = numbers.firstIndex(of: number),
-                  let columnIndex = numbers.firstIndex(of: 2) else {
+        func toggleFocusPanel() {
+            isFocusPanelVisible.toggle()
+        }
+
+        // MARK: - Selection
+        func setFocusTable(_ number: Int?) {
+            focusTable = number
+
+            guard let number else {
+                clearSelection()
                 return
             }
 
-            focusTable = number
-            activeCell = SelectedCell(row: rowIndex, column: columnIndex)
-            selectCell(row: number, column: 2)
+            selectedRow = number
+            updateActiveCell()
         }
 
-        func selectCell(row: Int, column: Int) {
+        func selectRow(_ number: Int) {
+            selectedRow = number
+            updateActiveCell()
+        }
+
+        func selectColumn(_ number: Int) {
+            selectedColumn = number
+            updateActiveCell()
+        }
+
+        func setColumn(_ number: Int?) {
+            selectedColumn = number
+            updateActiveCell()
+        }
+
+        private func selectCell(row: Int, column: Int) {
             selectedRow = row
             selectedColumn = column
+            updateActiveCell()
         }
 
-        func isSelected(row: Int, column: Int) -> Bool {
+        func selectCell(rowIndex: Int, columnIndex: Int) {
+            selectedRow = numbers[rowIndex]
+            selectedColumn = numbers[columnIndex]
+            focusTable = numbers[rowIndex]
+            updateActiveCell()
+        }
+
+        func clearSelection() {
+            selectedRow = nil
+            selectedColumn = nil
+            updateActiveCell()
+        }
+
+        private func updateActiveCell() {
+            guard
+                let row = selectedRow,
+                let col = selectedColumn,
+                let r = numbers.firstIndex(of: row),
+                let c = numbers.firstIndex(of: col)
+            else {
+                activeCell = nil
+                return
+            }
+
+            activeCell = SelectedCell(row: r, column: c)
+        }
+
+        private func isSelected(row: Int, column: Int) -> Bool {
             selectedRow == row && selectedColumn == column
         }
 
-        func isActiveCell(rowIndex: Int, columnIndex: Int) -> Bool {
+        private func isActiveCell(rowIndex: Int, columnIndex: Int) -> Bool {
             activeCell == SelectedCell(row: rowIndex, column: columnIndex)
         }
 
-        func value(row: Int, column: Int) -> Int {
+        // MARK: - Grid interaction
+        private func value(row: Int, column: Int) -> Int {
             row * column
         }
 
-        func cellText(rowIndex: Int, columnIndex: Int) -> String {
+        private func cellText(rowIndex: Int, columnIndex: Int) -> String {
             let row = numbers[rowIndex]
-            let column = numbers[columnIndex]
-
-            return "\(value(row: row, column: column))"
+            let col = numbers[columnIndex]
+            return "\(value(row: row, column: col))"
         }
 
         func updateCellCenter(_ center: CGPoint, rowIndex: Int, columnIndex: Int) {
@@ -150,129 +243,93 @@ extension LearnView {
         }
 
         func updateSelection(at point: CGPoint) {
-            guard isFocusMode else { return }
-            guard let closestCell = closestCell(to: point) else { return }
+            guard
+                isFocusMode,
+                let closest = closestCell(to: point)
+            else { return }
 
-            activeCell = closestCell
-            focusTable = numbers[closestCell.row]
-            selectCell(
-                row: numbers[closestCell.row],
-                column: numbers[closestCell.column]
-            )
+            selectedRow = numbers[closest.row]
+            selectedColumn = numbers[closest.column]
+
+            focusTable = selectedRow
+            updateActiveCell()
         }
 
-        func cellColor(rowIndex: Int, columnIndex: Int) -> Color {
-            guard isFocusMode else {
-                return Color.clear
-            }
+        // MARK: - UI colors
+        private func cellColor(rowIndex: Int, columnIndex: Int) -> Color {
+            guard isFocusMode else { return .clear }
 
-            if isActiveCell(rowIndex: rowIndex, columnIndex: columnIndex) {
-                return AppColor.commonAccentBlue
-            }
-
-            return Color.clear
+            return isActiveCell(rowIndex: rowIndex, columnIndex: columnIndex)
+                ? AppColor.commonAccentBlue
+                : .clear
         }
 
         func cellTextColor(rowIndex: Int, columnIndex: Int) -> Color {
-            guard isFocusMode else {
-                return Color.primary
-            }
+            guard isFocusMode else { return .primary }
 
             if isActiveCell(rowIndex: rowIndex, columnIndex: columnIndex) {
-                return Color.primary
+                return .primary
             }
 
-            guard activeCell != nil else {
-                return Color.primary
-            }
-
-            if isCellOnMultiplierPath(rowIndex: rowIndex, columnIndex: columnIndex) {
-//                return Color.primary
-                return Color.gray.opacity(0.45)
-            }
-
-            return Color.gray.opacity(0.45)
-        }
-
-        func headerTextColor(rowIndex: Int?, columnIndex: Int?) -> Color {
-            guard isFocusMode else {
-                return AppColor.commonAccentBlue
-            }
-
-            guard activeCell != nil else {
-                return AppColor.commonAccentBlue
-            }
-
-            if isHeaderRelatedToActiveCell(rowIndex: rowIndex, columnIndex: columnIndex) {
-                return AppColor.commonAccentBlue
-            }
-
-            return Color.gray.opacity(0.45)
+            return activeCell == nil
+                ? .primary
+                : .gray.opacity(0.45)
         }
 
         func cellBorderColor(rowIndex: Int, columnIndex: Int) -> Color {
-            guard isFocusMode else {
-                return Color.clear
-            }
+            guard
+                isFocusMode,
+                isCellOnMultiplierPath(rowIndex: rowIndex, columnIndex: columnIndex)
+            else { return .clear }
 
-            guard isCellOnMultiplierPath(rowIndex: rowIndex, columnIndex: columnIndex) else {
-                return Color.clear
-            }
-
-            return Color.gray
+            return .gray
         }
 
         func headerColor(rowIndex: Int?, columnIndex: Int?) -> Color {
-            Color.gray.opacity(0.15)
+            .gray.opacity(0.15)
         }
 
-        func headerBorderColor(rowIndex: Int?, columnIndex: Int?) -> Color {
-            guard isFocusMode else {
-                return Color.clear
-            }
-
-            guard isHeaderRelatedToActiveCell(rowIndex: rowIndex, columnIndex: columnIndex) else {
-                return Color.clear
-            }
-
-            return Color.gray.opacity(0.35)
-        }
-
-        func focusTableColor(_ number: Int) -> Color {
-            if focusTable == number {
+        func headerTextColor(rowIndex: Int?, columnIndex: Int?) -> Color {
+            if let r = rowIndex,
+               selectedRow == numbers[r] {
                 return AppColor.commonAccentBlue
             }
 
-            return Color.white
-        }
-
-        func focusTableTextColor(_ number: Int) -> Color {
-            if focusTable == number {
-                return Color.white
+            if let c = columnIndex,
+               selectedColumn == numbers[c] {
+                return AppColor.commonAccentBlue
             }
 
-            return Color.primary
+            return .gray
         }
 
-        func moveSelection(offset: Int) {
-            guard let currentColumn = selectedColumn,
-                  let focusRowIndex = numbers.firstIndex(of: focusTable),
-                  let currentColumnIndex = numbers.firstIndex(of: currentColumn) else {
-                setFocusTable(1)
-                return
-            }
+        func headerBorderColor(rowIndex: Int?, columnIndex: Int?) -> Color {
+            guard
+                isFocusMode, isHeaderRelatedToActiveCell(rowIndex: rowIndex, columnIndex: columnIndex)
+            else { return .clear }
 
-            let nextColumnIndex = min(max(currentColumnIndex + offset, 0), numbers.count - 1)
-            let nextColumn = numbers[nextColumnIndex]
-
-            activeCell = SelectedCell(row: focusRowIndex, column: nextColumnIndex)
-            selectCell(row: focusTable, column: nextColumn)
+            return .gray.opacity(0.35)
         }
 
-        private func clearSelection() {
-            selectedRow = nil
-            selectedColumn = nil
-            activeCell = nil
+        private func focusTableColor(_ number: Int) -> Color {
+            focusTable == number ? AppColor.commonAccentBlue : .white
+        }
+
+        private func focusTableTextColor(_ number: Int) -> Color {
+            focusTable == number ? .white : .primary
+        }
+
+        // MARK: - Helpers
+        private func closestCell(to point: CGPoint) -> SelectedCell? {
+            cellCenters.min {
+                distanceSquared($0.value, point) < distanceSquared($1.value, point)
+            }?.key
+        }
+
+        private func distanceSquared(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
+            let dx = a.x - b.x
+            let dy = a.y - b.y
+            return dx * dx + dy * dy
         }
 
         private func isCellOnMultiplierPath(rowIndex: Int, columnIndex: Int) -> Bool {
@@ -280,28 +337,13 @@ extension LearnView {
         }
 
         private func isHeaderRelatedToActiveCell(rowIndex: Int?, columnIndex: Int?) -> Bool {
-            guard let activeCell else {
-                return false
-            }
+            if let r = rowIndex,
+               selectedRow == numbers[r] { return true }
 
-            if rowIndex == nil && columnIndex == nil {
-                return false
-            }
+            if let c = columnIndex,
+               selectedColumn == numbers[c] { return true }
 
-            return rowIndex == activeCell.row || columnIndex == activeCell.column
-        }
-
-        private func closestCell(to point: CGPoint) -> SelectedCell? {
-            cellCenters.min { lhs, rhs in
-                distanceSquared(lhs.value, point) < distanceSquared(rhs.value, point)
-            }?.key
-        }
-
-        private func distanceSquared(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
-            let dx = a.x - b.x
-            let dy = a.y - b.y
-
-            return dx * dx + dy * dy
+            return false
         }
 
         private func distanceToMultiplier(rowIndex: Int, columnIndex: Int) -> Int {
@@ -317,26 +359,33 @@ extension LearnView {
 
             return Int.max
         }
-    }
-}
 
-enum LearnMode: String, CaseIterable, Identifiable {
-    case explore
-    case focus
+        func moveSelection(offset: Int) {
+            guard
+                let row = selectedRow,
+                let col = selectedColumn,
+                let r = numbers.firstIndex(of: row),
+                let c = numbers.firstIndex(of: col)
+            else { return }
 
-    var id: String {
-        rawValue
-    }
+            var newR = r
+            var newC = c + offset
 
-    var title: String {
-        switch self {
-        case .explore: return "Explore"
-        case .focus: return "Focus Mode"
+            if newC < 0 {
+                newC = numbers.count - 1
+                newR -= 1
+            } else if newC >= numbers.count {
+                newC = 0
+                newR += 1
+            }
+
+            guard numbers.indices.contains(newR) else { return }
+
+            selectedRow = numbers[newR]
+            selectedColumn = numbers[newC]
+
+            updateActiveCell()
         }
-    }
-}
 
-struct SelectedCell: Hashable {
-    let row: Int
-    let column: Int
+    }
 }

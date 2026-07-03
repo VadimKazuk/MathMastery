@@ -9,6 +9,8 @@ protocol SwiftDataService {
 
     func saveSession(_ session: PracticeSession)
     func fetchSessions() -> [PracticeSession]
+
+    func clearSessions()
 }
 
 final class SwiftDataManager: SwiftDataService {
@@ -20,7 +22,7 @@ final class SwiftDataManager: SwiftDataService {
         do {
             self.container = try ModelContainer(
                 for: PracticeSession.self,
-                     PracticeMistake.self
+                PracticeAnswer.self
             )
             self.context = container.mainContext
         } catch {
@@ -67,5 +69,19 @@ final class SwiftDataManager: SwiftDataService {
         )
 
         return (try? context.fetch(descriptor)) ?? []
+    }
+
+    func clearSessions() {
+        do {
+            let allSessions = try context.fetch(FetchDescriptor<PracticeSession>())
+
+            for session in allSessions {
+                context.delete(session)
+            }
+            try context.save()
+            print("✅ ALL SESSIONS WERE DELETED")
+        } catch {
+            print("❌ERROR WHILE DELETING ALL SESSIONS: \(error)")
+        }
     }
 }

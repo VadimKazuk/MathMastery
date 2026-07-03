@@ -69,24 +69,74 @@ private extension LearnView {
 
     var focusTableSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("SET FOCUS TABLE")
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundColor(.secondary)
+            HStack {
+                Text("SET FOCUS TABLE")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.secondary)
 
-            Picker(
-                "Focus Table",
-                selection: Binding(
-                    get: { viewModel.focusTable },
-                    set: { viewModel.setFocusTable($0) }
-                )
-            ) {
-                ForEach(viewModel.focusTables, id: \.self) { number in
-                    Text("\(number)")
-                        .tag(number)
+                Spacer()
+
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                        viewModel.toggleFocusPanel()
+                    }
+                } label: {
+                    Image(systemName: viewModel.isFocusPanelVisible
+                          ? "chevron.up"
+                          : "chevron.down")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.secondary)
                 }
             }
-            .pickerStyle(.segmented)
+
+            if viewModel.isFocusPanelVisible {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Column")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.primary.opacity(0.7))
+                    columnControl
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Row")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.primary.opacity(0.7))
+                    rowControl
+                }
+            }
         }
+    }
+
+    var rowControl: some View {
+        Picker("Row", selection: Binding(
+            get: { viewModel.selectedRow },
+            set: { viewModel.setFocusTable($0) }
+        )) {
+            Text("×")
+                .tag(nil as Int?)
+
+            ForEach(viewModel.numbers, id: \.self) { number in
+                Text("\(number)")
+                    .tag(Optional(number))
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    var columnControl: some View {
+        Picker("Column", selection: Binding(
+            get: { viewModel.selectedColumn },
+            set: { viewModel.setColumn($0) }
+        )) {
+            Text("×")
+                .tag(nil as Int?)
+
+            ForEach(viewModel.numbers, id: \.self) { number in
+                Text("\(number)")
+                    .tag(Optional(number))
+            }
+        }
+        .pickerStyle(.segmented)
     }
 
     var tableCard: some View {
@@ -97,12 +147,6 @@ private extension LearnView {
                 RoundedRectangle(cornerRadius: 18)
                     .fill(Color.white)
                     .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 8)
-            }
-            .overlay(alignment: .bottomLeading) {
-                //                if viewModel.isFocusMode {
-                //                    focusProgressBar
-                //                        .padding(.horizontal, 16)
-                //                }
             }
     }
 
@@ -136,24 +180,14 @@ private extension LearnView {
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
                     .foregroundColor(AppColor.commonAccentBlue)
 
-//                Text(viewModel.equationSubtitle)
-//                    .font(.system(size: 17, weight: .regular, design: .rounded))
-//                    .foregroundColor(Color.primary)
-//                    .padding(.horizontal, 18)
-//                    .padding(.vertical, 10)
-//                    .background {
-//                        Capsule()
-//                            .fill(Color.white.opacity(0.72))
-//                    }
-
-                Text("ACTIVE LEARNING")
+                Text(viewModel.equationAccuracyText)
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.green.opacity(0.9))
+                    .foregroundColor(Color.primary.opacity(0.7))
                     .padding(.horizontal, 18)
                     .padding(.vertical, 8)
                     .background {
                         Capsule()
-                            .fill(Color.green.opacity(0.22))
+                            .fill(viewModel.currentEquationLevel.color)
                     }
             }
             .frame(maxWidth: .infinity)
@@ -205,191 +239,6 @@ private extension LearnView {
                     .frame(width: 35, height: 35)
                     .clipShape(Circle())
             }
-        }
-    }
-}
-
-// MARK: - Grid
-
-private struct MultiplicationGridView: View {
-    @ObservedObject var viewModel: LearnView.ViewModel
-
-    private let spacing: CGFloat = 6
-
-    var body: some View {
-        GeometryReader { geo in
-            let cellSize = cellSize(for: geo.size.width)
-
-            gridContent(cellSize: cellSize, width: geo.size.width)
-        }
-    }
-
-    @ViewBuilder
-    private func gridContent(cellSize: CGFloat, width: CGFloat) -> some View {
-        let content = VStack(spacing: spacing) {
-            headerRow(cellSize: cellSize)
-            multiplicationRows(cellSize: cellSize)
-        }
-            .frame(width: width)
-            .coordinateSpace(name: LearnView.ViewModel.gridCoordinateSpaceName)
-            .contentShape(Rectangle())
-
-        if viewModel.isFocusMode {
-            content.gesture(dragGesture)
-        } else {
-            content
-        }
-    }
-
-    private func cellSize(for width: CGFloat) -> CGFloat {
-        let columns = CGFloat(viewModel.numbers.count + 1)
-        let totalSpacing = spacing * (columns - 1)
-
-        return max((width - totalSpacing) / columns, 1)
-    }
-
-    private func headerRow(cellSize: CGFloat) -> some View {
-        HStack(spacing: spacing) {
-            HeaderCell(
-                text: "×",
-                color: viewModel.headerColor(rowIndex: nil, columnIndex: nil),
-                textColor: viewModel.headerTextColor(rowIndex: nil, columnIndex: nil),
-                borderColor: viewModel.headerBorderColor(rowIndex: nil, columnIndex: nil),
-                cellSize: cellSize
-            )
-
-            ForEach(viewModel.numbers.indices, id: \.self) { columnIndex in
-                HeaderCell(
-                    text: "\(viewModel.numbers[columnIndex])",
-                    color: viewModel.headerColor(rowIndex: nil, columnIndex: columnIndex),
-                    textColor: viewModel.headerTextColor(rowIndex: nil, columnIndex: columnIndex),
-                    borderColor: viewModel.headerBorderColor(rowIndex: nil, columnIndex: columnIndex),
-                    cellSize: cellSize
-                )
-            }
-        }
-    }
-
-    private func multiplicationRows(cellSize: CGFloat) -> some View {
-        ForEach(viewModel.numbers.indices, id: \.self) { rowIndex in
-            HStack(spacing: spacing) {
-                HeaderCell(
-                    text: "\(viewModel.numbers[rowIndex])",
-                    color: viewModel.headerColor(rowIndex: rowIndex, columnIndex: nil),
-                    textColor: viewModel.headerTextColor(rowIndex: rowIndex, columnIndex: nil),
-                    borderColor: viewModel.headerBorderColor(rowIndex: rowIndex, columnIndex: nil),
-                    cellSize: cellSize
-                )
-
-                ForEach(viewModel.numbers.indices, id: \.self) { columnIndex in
-                    let level = viewModel.mistakeLevel(
-                        left: viewModel.numbers[rowIndex],
-                        right: viewModel.numbers[columnIndex]
-                    )
-//                    MultiplicationCell(
-//                        text: viewModel.cellText(rowIndex: rowIndex, columnIndex: columnIndex),
-//                        color: viewModel.cellColor(rowIndex: rowIndex, columnIndex: columnIndex),
-//                        textColor: viewModel.cellTextColor(rowIndex: rowIndex, columnIndex: columnIndex),
-//                        borderColor: viewModel.cellBorderColor(rowIndex: rowIndex, columnIndex: columnIndex),
-//                        cellSize: cellSize,
-//                        onCenterChange: { center in
-//                            viewModel.updateCellCenter(
-//                                center,
-//                                rowIndex: rowIndex,
-//                                columnIndex: columnIndex
-//                            )
-//                        }
-//                    )
-                    MultiplicationCell(
-                        text: viewModel.cellText(rowIndex: rowIndex, columnIndex: columnIndex),
-                        color: level.color,
-                        textColor: viewModel.cellTextColor(rowIndex: rowIndex, columnIndex: columnIndex),
-                        borderColor: viewModel.cellBorderColor(rowIndex: rowIndex, columnIndex: columnIndex),
-                        cellSize: cellSize,
-                        onCenterChange: { center in
-                            viewModel.updateCellCenter(center, rowIndex: rowIndex, columnIndex: columnIndex)
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-    private var dragGesture: some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                viewModel.updateSelection(at: value.location)
-            }
-    }
-}
-
-private struct HeaderCell: View {
-    let text: String
-    let color: Color
-    let textColor: Color
-    let borderColor: Color
-    let cellSize: CGFloat
-
-    var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 10)
-
-        Text(text)
-            .fontWeight(.semibold)
-            .fontDesign(.rounded)
-            .foregroundColor(textColor)
-            .frame(width: cellSize, height: cellSize)
-            .background(color)
-            .clipShape(shape)
-            .overlay {
-                shape.stroke(borderColor, lineWidth: 1.5)
-            }
-    }
-}
-
-private struct MultiplicationCell: View {
-    let text: String
-    let color: Color
-    let textColor: Color
-    let borderColor: Color
-    let cellSize: CGFloat
-    let onCenterChange: (CGPoint) -> Void
-
-    var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 10)
-
-        Text(text)
-            .fontWeight(.semibold)
-            .fontDesign(.rounded)
-            .foregroundColor(textColor)
-            .frame(width: cellSize, height: cellSize)
-            .background(color)
-            .clipShape(shape)
-            .overlay {
-                shape.stroke(borderColor, lineWidth: 1.5)
-            }
-            .background(centerReader)
-            .clipShape(shape)
-    }
-
-    private var centerReader: some View {
-        GeometryReader { geo in
-            Color.clear
-                .onAppear {
-                    updateCenter(from: geo)
-                }
-                .onChange(of: geo.frame(in: .named(LearnView.ViewModel.gridCoordinateSpaceName)).midX) { _, _ in
-                    updateCenter(from: geo)
-                }
-                .onChange(of: geo.frame(in: .named(LearnView.ViewModel.gridCoordinateSpaceName)).midY) { _, _ in
-                    updateCenter(from: geo)
-                }
-        }
-    }
-
-    private func updateCenter(from geo: GeometryProxy) {
-        DispatchQueue.main.async {
-            let frame = geo.frame(in: .named(LearnView.ViewModel.gridCoordinateSpaceName))
-            onCenterChange(CGPoint(x: frame.midX, y: frame.midY))
         }
     }
 }

@@ -15,8 +15,8 @@ struct ProfileView: View {
                 VStack(spacing: 20) {
                     profileHeader
                     statsRow
-                    mostDifficultSection
-                    focusAreasSection
+//                    mostDifficultSection
+//                    focusAreasSection
                     achievementsSection
                     recentSessionsPreview
                     NavigationLink {
@@ -128,40 +128,40 @@ struct ProfileView: View {
         }
     }
 
-    private var mostDifficultSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Image(systemName: "puzzlepiece.fill")
-                    .foregroundColor(.orange)
-                Text("12 × 13")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                Spacer()
-            }
-            Text("MOST DIFFICULT")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.secondary)
-        }
-        .padding()
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-
-    private var focusAreasSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Focus Areas")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                Spacer()
-                Button("RETRY ALL") { }
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.blue)
-            }
-
-            FocusAreaRow(multiplier: 7, status: "Accuracy dropped by 15% this week", color: .orange)
-            FocusAreaRow(multiplier: 8, status: "Average time: 4.5 seconds", color: .red)
-            FocusAreaRow(multiplier: 12, status: "Stable performance", color: .gray)
-        }
-    }
+//    private var mostDifficultSection: some View {
+//        VStack(alignment: .leading, spacing: 4) {
+//            HStack {
+//                Image(systemName: "puzzlepiece.fill")
+//                    .foregroundColor(.orange)
+//                Text("12 × 13")
+//                    .font(.system(size: 22, weight: .bold, design: .rounded))
+//                Spacer()
+//            }
+//            Text("MOST DIFFICULT")
+//                .font(.system(size: 13, weight: .medium))
+//                .foregroundColor(.secondary)
+//        }
+//        .padding()
+//        .background(Color.white)
+//        .clipShape(RoundedRectangle(cornerRadius: 16))
+//    }
+//
+//    private var focusAreasSection: some View {
+//        VStack(alignment: .leading, spacing: 12) {
+//            HStack {
+//                Text("Focus Areas")
+//                    .font(.system(size: 18, weight: .bold, design: .rounded))
+//                Spacer()
+//                Button("RETRY ALL") { }
+//                    .font(.system(size: 15, weight: .semibold))
+//                    .foregroundColor(.blue)
+//            }
+//
+//            FocusAreaRow(multiplier: 7, status: "Accuracy dropped by 15% this week", color: .orange)
+//            FocusAreaRow(multiplier: 8, status: "Average time: 4.5 seconds", color: .red)
+//            FocusAreaRow(multiplier: 12, status: "Stable performance", color: .gray)
+//        }
+//    }
 
     private var achievementsSection: some View {
         VStack(alignment: .leading, spacing: 12) {

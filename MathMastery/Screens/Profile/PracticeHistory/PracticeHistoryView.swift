@@ -95,8 +95,8 @@ struct HistoryRow: View {
                 }
                 .font(.system(size: 15, weight: .medium))
 
-                if !session.mistakes.isEmpty {
-                    Text("\(session.mistakes.count) mistakes")
+                if session.hasMistakes {
+                    Text("\(session.mistakesCount) mistakes")
                         .font(.caption)
                         .foregroundStyle(.red)
                 }

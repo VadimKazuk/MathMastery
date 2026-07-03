@@ -45,6 +45,8 @@ extension SettingsView {
         private let serviceContainer: ServiceContainer
         private var cancellables = Set<AnyCancellable>()
 
+        private let swiftDB: SwiftDataService
+
         // Account
         // (Handled via navigation actions)
 
@@ -73,6 +75,11 @@ extension SettingsView {
 
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
+            swiftDB = serviceContainer.resolve(SwiftDataService.self)
+        }
+
+        func clearSessions() {
+            swiftDB.clearSessions()
         }
     }
 }
@@ -81,6 +88,8 @@ extension SettingsView {
 struct SettingsView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
+
+    @State private var showExitModal = false
 
     init(viewModel: ViewModel) {
         self._viewModel = StateObject(wrappedValue: viewModel)
@@ -238,7 +247,7 @@ struct SettingsView: View {
 
                 // MARK: - Data & Privacy Section
                 Section(header: Text("DATA & PRIVACY")) {
-                    Button(action: { /* Handle reset logic */ }) {
+                    Button(action: { showExitModal = true }) {
                         HStack {
                             Text("Reset Practice History").foregroundColor(.red)
                             Spacer()
@@ -297,6 +306,76 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .overlay {
+                exitOverlay
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var exitOverlay: some View {
+        if showExitModal {
+            ZStack {
+                Color.black.opacity(0.32)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showExitModal = false
+                        }
+                    }
+
+                VStack(spacing: 20) {
+                    Text("Sure?")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+
+                    Text("All of your progress will be lost.")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    HStack(spacing: 12) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showExitModal = false
+                            }
+                        } label: {
+                            Text("Cancel")
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .foregroundColor(AppColor.commonAccentBlue)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(Color(.systemGray6))
+                                }
+                        }
+
+                        Button {
+                            showExitModal = false
+                            viewModel.clearSessions()
+                        } label: {
+                            Text("Delete")
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(.red)
+                                }
+                        }
+                    }
+                }
+                .padding(24)
+                .frame(width: 310)
+                .background {
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(Color.white.opacity(0.96))
+                        .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 10)
+                }
+                .transition(.scale.combined(with: .opacity))
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showExitModal)
         }
     }
 }

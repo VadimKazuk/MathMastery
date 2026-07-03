@@ -12,8 +12,10 @@ extension SpeedPracticeView {
         @Published private(set) var bestStreak = 0
         @Published private(set) var currentStreak = 0
         @Published private(set) var questionIndex = 0
-        @Published private(set) var currentQuestion = ViewModel.makeRandomQuestion()
+
+        @Published private(set) var currentQuestion = PracticeQuestion(left: 2, right: 2)
         @Published private(set) var answerOptions: [AnswerOption] = []
+
         @Published private(set) var isFinished = false
         @Published private(set) var isAcceptingAnswers = false
         @Published private(set) var blinkToggle = false
@@ -21,10 +23,9 @@ extension SpeedPracticeView {
         @Published private(set) var didComplete = false
         @Published private(set) var countdownValue: Int?
 
-        @Published private(set) var mistakes: [PracticeMistake] = []
+        @Published private(set) var answers: [PracticeAnswer] = []
 
         private static let sessionDuration = 17
-        private static let questionRange = 2...9
 
         private var questionStartTime = Date()
         private var responseTimes: [TimeInterval] = []
@@ -39,6 +40,8 @@ extension SpeedPracticeView {
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
+
+            self.currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
         }
 
@@ -104,9 +107,9 @@ extension SpeedPracticeView {
             isFinished = false
             isAcceptingAnswers = false
 
-            mistakes = []
+            answers = []
 
-            currentQuestion = Self.makeRandomQuestion()
+            currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
         }
 
@@ -189,6 +192,16 @@ extension SpeedPracticeView {
 
             let isCorrect = answer == currentQuestion.answer
 
+            answers.append(
+                PracticeAnswer(
+                    left: currentQuestion.left,
+                    right: currentQuestion.right,
+                    correctAnswer: currentQuestion.answer,
+                    userAnswer: answer,
+                    mode: .speed
+                )
+            )
+
             if let index = answerOptions.firstIndex(where: { $0.value == currentQuestion.answer }) {
                 answerOptions[index].state = .correct
             }
@@ -196,18 +209,6 @@ extension SpeedPracticeView {
             if !isCorrect,
                let index = answerOptions.firstIndex(where: { $0.value == answer }) {
                 answerOptions[index].state = .wrong
-            }
-
-            if !isCorrect {
-                mistakes.append(
-                    PracticeMistake(
-                        left: currentQuestion.left,
-                        right: currentQuestion.right,
-                        correctAnswer: currentQuestion.answer,
-                        userAnswer: answer,
-                        mode: .speed
-                    )
-                )
             }
 
             Task {
@@ -228,12 +229,29 @@ extension SpeedPracticeView {
             }
 
             questionIndex += 1
-            currentQuestion = Self.makeRandomQuestion()
 
+            currentQuestion = makeSmartQuestion()
             questionStartTime = Date()
 
             updateAnswerOptions()
             isAcceptingAnswers = true
+        }
+
+        // MARK: - Smart Question Generator Integration
+
+        private func makeSmartQuestion() -> PracticeQuestion {
+            // 1. Извлекаем историю ответов
+            let allAnswers = swiftDB.fetchSessions().flatMap { $0.answers }
+
+            // 2. Делегируем логику единому генератору
+            let selectedCell = SmartQuestionGenerator.generateSingleCell(allAnswers: allAnswers)
+
+            // 3. Рандомизируем отображение (зеркальное переворачивание)
+            let shouldSwap = Bool.random()
+            return PracticeQuestion(
+                left: shouldSwap ? selectedCell.right : selectedCell.left,
+                right: shouldSwap ? selectedCell.left : selectedCell.right
+            )
         }
 
         func backgroundColor(for option: AnswerOption) -> Color {
@@ -301,7 +319,7 @@ extension SpeedPracticeView {
                 let sign = Bool.random() ? 1 : -1
                 add(answer + offset * sign)
             }
-            
+
             var finalOptions = Array(distractors.prefix(3))
             finalOptions.append(answer)
 
@@ -309,54 +327,30 @@ extension SpeedPracticeView {
                 .map { AnswerOption(value: $0) }
         }
 
-        private static func makeRandomQuestion() -> PracticeQuestion {
-            PracticeQuestion(
-                left: questionRange.randomElement() ?? 2,
-                right: questionRange.randomElement() ?? 2
-            )
-        }
-
         func saveSession() -> PracticeSession {
-            let accuracy = solvedCount == 0
-                ? 0
-                : Int((Double(correctCount) / Double(solvedCount)) * 100)
-
             let session = PracticeSession(
                 mode: .speed,
                 duration: Self.sessionDuration,
-                accuracy: accuracy,
                 correctAnswers: correctCount,
                 questionsCount: solvedCount,
                 longestStreak: bestStreak,
-                averageResponseTime: averageResponseTimeValue,
-                mistakes: []
+                averageResponseTime: averageResponseTimeValue
             )
 
-            let mappedMistakes = mistakes.map {
-                let m = PracticeMistake(
-                    left: $0.left,
-                    right: $0.right,
-                    correctAnswer: $0.correctAnswer,
-                    userAnswer: $0.userAnswer,
-                    mode: .speed
-                )
-                m.session = session
-                return m
+            answers.forEach {
+                $0.session = session
             }
 
-            session.mistakes = mappedMistakes
-
+            session.answers = answers
             swiftDB.saveSession(session)
+
             return session
         }
 
         func makeResult() -> PracticeSession {
-
             let session = saveSession()
 
             return session
         }
     }
 }
-
-

@@ -12,7 +12,7 @@ extension BossPracticeView {
         @Published var selectedTable = 7
         @Published private(set) var questionIndex = 0
         @Published private(set) var correctCount = 0
-        @Published private(set) var mistakes: [PracticeMistake] = []
+        @Published private(set) var answers: [PracticeAnswer] = []
 
         let tables = Array(2...12)
 
@@ -41,23 +41,23 @@ extension BossPracticeView {
             phase = .active
             questionIndex = 0
             correctCount = 0
-            mistakes = []
+            answers.removeAll()
         }
 
         func selectAnswer(_ answer: Int) -> PracticeSession? {
             if answer == currentQuestion.answer {
                 correctCount += 1
-            } else {
-                mistakes.append(
-                    PracticeMistake(
-                        left: currentQuestion.left,
-                        right: currentQuestion.right,
-                        correctAnswer: currentQuestion.answer,
-                        userAnswer: answer,
-                        mode: .boss
-                    )
-                )
             }
+
+            answers.append(
+                PracticeAnswer(
+                    left: currentQuestion.left,
+                    right: currentQuestion.right,
+                    correctAnswer: currentQuestion.answer,
+                    userAnswer: answer,
+                    mode: .classic
+                )
+            )
 
             if questionIndex == questions.count - 1 {
                 return makeResult()
@@ -68,16 +68,14 @@ extension BossPracticeView {
         }
 
         func makeResult() -> PracticeSession {
-            let accuracy = Int((Double(correctCount) / Double(questions.count)) * 100)
 
             return PracticeSession(
                 mode: .boss,
                 duration: 0,
-                accuracy: accuracy,
                 correctAnswers: correctCount,
                 questionsCount: 0,
                 longestStreak: 0,
-                mistakes: []
+                answers: answers
             )
 
         }

@@ -5,8 +5,11 @@ extension PracticeResultView {
     final class ViewModel: ObservableObject {   // ← Добавили ObservableObject
         let session: PracticeSession
 
+        let mistakes: [PracticeAnswer]
+
         init(serviceContainer: ServiceContainer, session: PracticeSession) {
             self.session = session
+            self.mistakes = session.answers.filter { !$0.isCorrect }
         }
 
         var title: String {

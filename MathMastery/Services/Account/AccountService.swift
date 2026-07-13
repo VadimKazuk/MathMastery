@@ -65,6 +65,14 @@ final class AccountService {
             storageService.clear(key: key)
         }
     }
+
+    func addXP(_ xp: Int) {
+        profile.totalXP += xp
+    }
+
+    func resetXP() {
+        profile.totalXP = 0
+    }
 }
 
 struct UserProfile: Codable {
@@ -73,8 +81,8 @@ struct UserProfile: Codable {
     var age: String = ""
     var grade: String = ""
     var avatarId: Int = 1
+    var totalXP: Int = 0
 }
-
 
 import Foundation
 

@@ -18,10 +18,10 @@ extension PracticeResultView {
 
         var summary: String {
             switch session.mode {
-            case .classic:  return "Correctness practice without time pressure."
+            case .focus:  return "Correctness practice without time pressure."
             case .speed:    return "Fast recall session complete."
             case .survival: return "You ran out of lives."
-            case .boss:     return "Boss table completed."
+            case .rush:     return "Rush recall session complete."
             }
         }
 
@@ -44,7 +44,7 @@ extension PracticeResultView {
         }
 
         var mistakeTitle: String {
-            session.mode == .boss ? "Weak Points" : "Mistakes"
+            session.mode == .rush ? "Weak Points" : "Mistakes"
         }
     }
 }

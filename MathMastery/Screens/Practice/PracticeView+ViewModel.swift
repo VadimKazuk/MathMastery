@@ -27,7 +27,11 @@ extension PracticeView {
         }
 
         func selectMode(_ mode: PracticeMode) {
-            selectedMode = mode
+            if selectedMode == mode {
+                selectedMode = nil
+            } else {
+                selectedMode = mode
+            }
         }
 
         func startSelectedMode() {
@@ -41,12 +45,12 @@ extension PracticeView {
             switch mode {
             case .speed:
                 path = [.speed]
-            case .classic:
-                path = [.classic]
+            case .focus:
+                path = [.focusTableSelection] // Изменено: сначала идем на выбор таблицы
             case .survival:
                 path = [.survival]
-            case .boss:
-                path = [.boss]
+            case .rush:
+                path = [.rush]
             }
         }
 

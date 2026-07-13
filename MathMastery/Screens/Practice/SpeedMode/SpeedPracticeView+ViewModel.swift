@@ -5,6 +5,7 @@ import SwiftData
 extension SpeedPracticeView {
     final class ViewModel: ObservableObject {
         private let serviceContainer: ServiceContainer
+        private let accountService: AccountService
 
         @Published private(set) var secondsRemaining = sessionDuration
         @Published private(set) var solvedCount = 0
@@ -40,6 +41,7 @@ extension SpeedPracticeView {
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
+            self.accountService = serviceContainer.resolve(AccountService.self)
 
             self.currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
@@ -342,6 +344,10 @@ extension SpeedPracticeView {
             }
 
             session.answers = answers
+
+            let xp = XPSystem.xp(for: session)
+            accountService.addXP(xp)
+            
             swiftDB.saveSession(session)
 
             return session

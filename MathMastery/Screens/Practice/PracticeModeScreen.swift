@@ -6,17 +6,20 @@ struct PracticeModeScreen<Trailing: View, Content: View>: View {
     @State private var showExitModal = false
 
     let title: String
+    let needExitModal: Bool
     let trailing: Trailing
     let onComplete: () -> Void
     let content: Content
 
     init(
         title: String,
+        needExitModal: Bool = true,
         trailing: Trailing,
         onComplete: @escaping () -> Void,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
+        self.needExitModal = needExitModal
         self.trailing = trailing
         self.onComplete = onComplete
         self.content = content()
@@ -38,14 +41,16 @@ struct PracticeModeScreen<Trailing: View, Content: View>: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .overlay {
-            exitOverlay
+            if needExitModal {
+                exitOverlay
+            }
         }
     }
 
     private var header: some View {
         HStack(spacing: 14) {
             Button {
-                showExitModal = true
+                needExitModal ? showExitModal = true : dismiss()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 17, weight: .semibold))
@@ -151,11 +156,13 @@ struct PracticeModeScreen<Trailing: View, Content: View>: View {
 extension PracticeModeScreen where Trailing == EmptyView {
     init(
         title: String,
+        needExitModal: Bool = true,
         onComplete: @escaping () -> Void,
         @ViewBuilder content: () -> Content
     ) {
         self.init(
             title: title,
+            needExitModal: needExitModal,
             trailing: EmptyView(),
             onComplete: onComplete,
             content: content

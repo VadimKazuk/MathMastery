@@ -51,59 +51,90 @@ struct HistoryListView: View {
     }
 }
 
-
 import SwiftUI
 
 struct HistoryRow: View {
     let session: PracticeSession
-    var onTap: ((PracticeSession) -> Void)? = nil   // optional для превью
+    var onTap: ((PracticeSession) -> Void)? = nil // optional для превью
 
     var body: some View {
         Button(action: { onTap?(session) }) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: session.mode.systemImage)
-                        .font(.title3)
-                        .foregroundColor(session.mode.accentColor)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(session.mode.title)
-                            .font(.headline)
-                        Text(session.date.formatted(date: .abbreviated, time: .shortened))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
+            HStack(spacing: 16) {
+                // 1. Круговой индикатор точности (вместо иконки Daily Challenge)
+                ZStack {
+                    Circle()
+                        .stroke(session.mode.accentColor.opacity(0.1), lineWidth: 4)
+                    Circle()
+                        .trim(from: 0, to: CGFloat(session.accuracy) / 100.0)
+                        .stroke(session.mode.accentColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
 
                     Text("\(session.accuracy)%")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(.blue)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(session.mode.accentColor)
+                }
+                .frame(width: 46, height: 46)
+
+                var headerText: String {
+                    if let table = session.focusTable {
+                        return "\(session.mode.title) x\(table)"
+                    } else {
+                        return session.mode.title
+                    }
                 }
 
-                HStack(spacing: 20) {
-                    Label("\(session.correctAnswers)/\(session.questionsCount)", systemImage: "checkmark.circle.fill")
-                        .foregroundColor(.green)
+                // 2. Основная информация о сессии
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: session.mode.systemImage)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(session.mode.accentColor)
 
-                    if let avgTime = session.averageResponseTime {
-                        Label(String(format: "%.1fs", avgTime), systemImage: "timer")
-                            .foregroundColor(.purple)
+                        Text(headerText)
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
                     }
 
-                    Label("\(session.longestStreak)", systemImage: "flame.fill")
-                        .foregroundColor(.orange)
-                }
-                .font(.system(size: 15, weight: .medium))
+                    // Детали: сколько решено и за какое время
+                    HStack(spacing: 12) {
+                        Text("\(session.correctAnswers)/\(session.questionsCount) solved")
 
-                if session.hasMistakes {
-                    Text("\(session.mistakesCount) mistakes")
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                        if let avgTime = session.averageResponseTime {
+                            Text("•")
+                            Text(String(format: "%.1fs avg", avgTime))
+                        }
+
+                        if session.longestStreak > 0 {
+                            Text("•")
+                            HStack(spacing: 2) {
+                                Image(systemName: "flame.fill")
+                                    .font(.system(size: 10))
+                                Text("\(session.longestStreak)")
+                            }
+                            .foregroundColor(.orange)
+                        }
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                    // Дата прохождения
+                    Text(session.date.formatted(date: .abbreviated, time: .shortened))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .padding(.top, 1)
                 }
+
+                Spacer()
+
+                // 3. Стрелочка перехода справа
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(Color(.systemGray3))
             }
-            .padding()
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(20)
+            .shadow(color: Color.black.opacity(0.01), radius: 6, x: 0, y: 3)
         }
         .buttonStyle(.plain)
     }

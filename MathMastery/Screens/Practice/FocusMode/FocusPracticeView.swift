@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ClassicPracticeView: View {
+struct FocusPracticeView: View {
     @StateObject var viewModel: ViewModel
     let onComplete: (PracticeSession) -> Void
 
@@ -11,7 +11,7 @@ struct ClassicPracticeView: View {
 
     var body: some View {
         PracticeModeScreen(
-            title: "Classic Mode",
+            title: "Focus Mode",
             trailing: progressBadge,
             onComplete: {
                 onComplete(viewModel.makeResult())
@@ -150,4 +150,10 @@ struct ClassicPracticeView: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+
+enum FocusPracticeMode: Hashable {
+    case table(Int)
+    case all
 }

@@ -8,12 +8,21 @@ struct MathMasteryApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainContainerView(viewModel: .init(serviceContainer: serviceContainer))
-                .environmentObject(serviceContainer)
-                .onAppear {
-                    self.delegate.serviceContainer = serviceContainer
-                }
-                .preferredColorScheme(.light)
+            MainContainerView(
+                viewModel: MainContainerView.ViewModel(
+                    serviceContainer: serviceContainer
+                )
+            )
+            .environmentObject(serviceContainer)
+            .onAppear {
+                self.delegate.serviceContainer = serviceContainer
+
+                serviceContainer
+                    .resolve(GameCenterServiceProtocol.self)
+                    .authenticate()
+            }
+            .preferredColorScheme(.light)
         }
     }
 }
+

@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct PracticeView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
@@ -12,34 +13,33 @@ struct PracticeView: View {
         NavigationStack(path: $viewModel.path) {
             ScrollView {
                 contentView
-                    .padding(.horizontal, 24)
-                    .padding(.top, 22)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
                     .padding(.bottom, 24)
-                    .frame(maxWidth: .infinity)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Text("MathMastery")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(AppColor.commonAccentBlue)
-                        .fixedSize()
-                }
-                .sharedBackgroundVisibility(.hidden)
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        print("Profile tapped")
-                    } label: {
-                        Image(viewModel.avatarName)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 35, height: 35)
-                            .clipShape(Circle())
-                    }
-                }
-            }
-            .toolbarBackground(Color.white, for: .navigationBar)
+//            .toolbar {
+//                ToolbarItem(placement: .topBarLeading) {
+//                    Text("MathMastery")
+//                        .font(.system(size: 28, weight: .bold, design: .rounded))
+//                        .foregroundColor(AppColor.commonAccentBlue)
+//                        .fixedSize()
+//                }
+//                .sharedBackgroundVisibility(.hidden)
+//
+//                ToolbarItem(placement: .navigationBarTrailing) {
+//                    Button {
+//                        print("Profile tapped")
+//                    } label: {
+//                        Image(viewModel.avatarName)
+//                            .resizable()
+//                            .scaledToFill()
+//                            .frame(width: 35, height: 35)
+//                            .clipShape(Circle())
+//                    }
+//                }
+//            }
+//            .toolbarBackground(Color.white, for: .navigationBar)
             .navigationDestination(for: PracticeRoute.self) { route in
                 destinationView(for: route)
             }
@@ -59,56 +59,47 @@ struct PracticeView: View {
 
 private extension PracticeView {
     var contentView: some View {
-        VStack(alignment: .leading, spacing: 28) {
-            //            statsSection
-            titleSection
-            modesGrid
+        VStack(alignment: .leading, spacing: 24) {
+//            statsHeaderRow
+
+//            Text("Modes")
+//                .font(.system(size: 16, weight: .bold, design: .rounded))
+//                .padding(.top, 8)
+
+            modesList
         }
     }
 
-    var statsSection: some View {
-        HStack(spacing: 16) {
-            statCard(
-                title: "CURRENT STREAK",
-                value: "\(viewModel.currentStreak) Days",
-                systemImage: "flame",
-                accentColor: Color(red: 0.10, green: 0.46, blue: 0.22),
-                iconBackground: Color(red: 0.36, green: 0.95, blue: 0.45),
-                backgroundColor: Color(red: 0.91, green: 0.98, blue: 0.94)
-            )
-
-            statCard(
-                title: "BEST SCORE",
-                value: "\(viewModel.bestScore.formatted()) pts",
-                systemImage: "trophy",
-                accentColor: .white,
-                iconBackground: AppColor.commonAccentBlue,
-                backgroundColor: Color(red: 0.88, green: 0.93, blue: 1.0)
-            )
+    var statsHeaderRow: some View {
+        HStack(spacing: 12) {
+            StatCard(title: "STREAK", value: "5 Days", icon: "flame.fill", iconColor: .orange)
+            StatCard(title: "SOLVED", value: "42", icon: "checkmark.circle.fill", iconColor: .green)
+            StatCard(title: "BEST SPEED", value: "18", icon: "bolt.fill", iconColor: .blue)
         }
     }
 
-    var titleSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Practice")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(Color.primary)
+    func statHeaderCard(title: String, value: String, icon: String, iconColor: Color) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(iconColor)
 
-            Text("Choose your training grounds and sharpen your mind.")
-                .font(.system(size: 16, weight: .regular, design: .rounded))
-                .foregroundColor(Color.primary.opacity(0.72))
-                .lineSpacing(6)
+            Text(title)
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundColor(.secondary)
+
+            Text(value)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(.primary)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(20)
     }
 
-    var modesGrid: some View {
-        LazyVGrid(
-            columns: [
-                GridItem(.flexible(), spacing: 20),
-                GridItem(.flexible(), spacing: 20)
-            ],
-            spacing: 20
-        ) {
+    var modesList: some View {
+        VStack(spacing: 16) {
             ForEach(viewModel.modes) { mode in
                 practiceModeCard(mode)
             }
@@ -120,51 +111,12 @@ private extension PracticeView {
             viewModel.startSelectedMode()
         } label: {
             Text("Start Practice")
-                .font(.system(size: 23, weight: .regular, design: .rounded))
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
                 .frame(maxWidth: .infinity)
-                .frame(height: 45)
-        }
-        .buttonStyle(.glassProminent)
-        .tint(AppColor.commonAccentBlue)
-    }
-
-    func statCard(
-        title: String,
-        value: String,
-        systemImage: String,
-        accentColor: Color,
-        iconBackground: Color,
-        backgroundColor: Color
-    ) -> some View {
-        VStack(spacing: 22) {
-            Image(systemName: systemImage)
-                .font(.system(size: 34, weight: .semibold))
-                .foregroundColor(accentColor)
-                .frame(width: 76, height: 76)
-                .background {
-                    Circle()
-                        .fill(iconBackground)
-                }
-
-            VStack(spacing: 10) {
-                Text(title)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .tracking(1.2)
-                    .foregroundColor(Color.primary.opacity(0.72))
-                    .multilineTextAlignment(.center)
-
-                Text(value)
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.primary)
-                    .minimumScaleFactor(0.8)
-                    .lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 254)
-        .background {
-            RoundedRectangle(cornerRadius: 28)
-                .fill(backgroundColor)
+                .frame(height: 50)
+                .foregroundColor(.white)
+                .background(AppColor.commonAccentBlue)
+                .cornerRadius(16)
         }
     }
 
@@ -176,105 +128,147 @@ private extension PracticeView {
                 viewModel.selectMode(mode)
             }
         } label: {
-            VStack(spacing: 26) {
-                ZStack(alignment: .topTrailing) {
-                    //                    LottieView(name: mode.lottieImage, loop: true)
-                    //                        .frame(width: 40, height: 40)
-                    //                        .padding(25)
-                    //                        .background {
-                    //                            Circle()
-                    //                                .fill(mode.backgroundColor)
-                    //                        }
-                    //                        .frame(maxWidth: .infinity)
-                    Image(systemName: mode.systemImage)
-                        .font(.system(size: 39, weight: .regular))
-                        .foregroundColor(mode.accentColor)
-                        .frame(width: 74, height: 74)
-                        .background {
-                            Circle()
-                                .fill(mode.backgroundColor)
-                        }
-                        .frame(maxWidth: .infinity)
-                }
+            HStack(alignment: .top, spacing: 16) {
+//                AnimatedPracticeIcon(mode: mode)
+////                    .foregroundColor(mode.accentColor)
+//                    .background {
+//                        Circle()
+//                            .fill(mode.backgroundColor)
+//                    }
+//                LottieView(name: mode.lottieImage, loop: true)
+//                    .frame(width: 56, height: 56)
 
-                VStack(spacing: 14) {
-                    Text(mode.title)
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
+                Image(systemName: mode.systemImage)
+                    .font(.system(size: 24, weight: .regular))
+                    .foregroundColor(mode.accentColor)
+                    .frame(width: 56, height: 56)
+                    .background {
+                        Circle()
+                            .fill(mode.backgroundColor)
+                    }
 
-                    Text(mode.trainingFocus.uppercased())
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundColor(mode.accentColor)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top) {
+                        Text(mode.title)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+
+                        Text(mode.timeTag) // Чисто из модели
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(6)
+                    }
 
                     Text(mode.subtitle)
-                        .font(.system(size: 18, weight: .regular, design: .rounded))
-                        .foregroundColor(Color.primary.opacity(0.75))
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(3)
+                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .lineSpacing(2)
+                        .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
+                        .padding(.trailing, 8)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: mode.skillIcon) // Чисто из модели
+                            .font(.system(size: 11, weight: .bold))
+                        Text("Skill: \(mode.trainingFocus)")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(mode.accentColor)
+                    .padding(.top, 4)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 36)
-            .padding(.bottom, 30)
-            .frame(maxWidth: .infinity)
-            .frame(height: 320)
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: 28)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 5)
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color(.secondarySystemGroupedBackground))
+                    .shadow(color: Color.black.opacity(0.02), radius: 8, x: 0, y: 4)
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 28)
+                RoundedRectangle(cornerRadius: 24)
                     .stroke(isSelected ? AppColor.commonAccentBlue : Color.clear, lineWidth: 3)
             }
         }
         .buttonStyle(.plain)
     }
-
+    
     @ViewBuilder
     func destinationView(for route: PracticeRoute) -> some View {
         switch route {
+
+        case .focusTableSelection:
+            FocusTableSelectionView(
+                serviceContainer: serviceContainer
+            ) { target in
+                switch target {
+
+                case .all:
+                    viewModel.path.append(.focusPractice(table: nil))
+
+                case .table(let table):
+                    viewModel.path.append(.focusPractice(table: table))
+                }
+            }
+            .toolbar(.hidden, for: .tabBar)
+
+
+        case .focusPractice(let table):
+            FocusPracticeView(
+                viewModel: .init(
+                    serviceContainer: serviceContainer,
+                    mode: table == nil ? .all : .table(table!),
+                    focusTable: table
+                ),
+                onComplete: { viewModel.showResult($0) }
+            )
+            .toolbar(.hidden, for: .tabBar)
+
+
         case .speed:
             SpeedPracticeView(
                 viewModel: .init(serviceContainer: serviceContainer),
-                onComplete: { result in
-                    viewModel.showResult(result)
-                }
+                onComplete: { viewModel.showResult($0) }
             )
             .toolbar(.hidden, for: .tabBar)
-        case .classic:
-            ClassicPracticeView(
-                viewModel: .init(serviceContainer: serviceContainer),
-                onComplete: { result in
-                    viewModel.showResult(result)
-                }
-            )
-            .toolbar(.hidden, for: .tabBar)
+
+
         case .survival:
             SurvivalPracticeView(
                 viewModel: .init(serviceContainer: serviceContainer),
-                onComplete: { result in
-                    viewModel.showResult(result)
-                }
+                onComplete: { viewModel.showResult($0) }
             )
             .toolbar(.hidden, for: .tabBar)
-        case .boss:
-            BossPracticeView(
-                viewModel: .init(),
-                onComplete: { result in
-                    viewModel.showResult(result)
-                }
+
+
+        case .rush:
+            RushPracticeView(
+                viewModel: .init(serviceContainer: serviceContainer),
+                onComplete: { viewModel.showResult($0) }
             )
             .toolbar(.hidden, for: .tabBar)
+
+
         case .result(let session):
             PracticeResultView(
-                viewModel: .init(serviceContainer: serviceContainer, session: session),
+                viewModel: .init(
+                    serviceContainer: serviceContainer,
+                    session: session
+                ),
                 retryAction: {
-                    viewModel.retry(session.mode)
+
+                    if session.mode == .focus {
+                        viewModel.path = [
+                            .focusTableSelection
+                        ]
+                    } else {
+                        viewModel.retry(session.mode)
+                    }
+
                 },
                 switchModeAction: {
                     viewModel.returnToHub()
@@ -286,8 +280,156 @@ private extension PracticeView {
             .toolbar(.hidden, for: .tabBar)
         }
     }
+
 }
 
 #Preview {
     PracticeView(viewModel: .init(serviceContainer: PreviewServiceContainer()))
+}
+
+struct AnimatedPracticeIcon: View {
+    let mode: PracticeMode
+
+    @State private var animate = false
+
+    // Speed
+    @State private var speedFlash = false
+    @State private var speedCounter = 0
+    @State private var speedPause = false
+
+    private let speedTimer = Timer.publish(
+        every: 0.1,
+        on: .main,
+        in: .common
+    ).autoconnect()
+
+
+    var body: some View {
+        Image(systemName: mode.systemImage)
+            .font(.system(size: 24, weight: .regular))
+            .frame(width: 56, height: 56)
+
+            // Focus
+            .symbolEffect(
+                .breathe.pulse.byLayer,
+                options: .repeat(.continuous),
+                isActive: mode == .focus
+            )
+
+            // Speed
+            .foregroundStyle(
+                mode == .speed ? speedColor : mode.accentColor
+            )
+//            .symbolEffect(
+//                .breathe.pulse.wholeSymbol,
+//                options: .repeat(.continuous),
+//                isActive: mode == .speed
+//            )
+
+            .symbolEffect(.wiggle.down.byLayer, options: .repeat(.periodic(delay: 1.8)), isActive: mode == .speed)
+
+            // Rush
+            .scaleEffect(x: rushScaleX, y: rushScaleY)
+            .rotationEffect(.degrees(rushRotation))
+            .offset(y: rushOffset)
+
+            // Survival
+            .symbolEffect(
+                .bounce.up.byLayer,
+                options: .repeat(.periodic(delay: 1.0)),
+                isActive: mode == .survival
+            )
+
+            .animation(animation, value: animate)
+
+            .onAppear {
+                animate = true
+            }
+
+            .onReceive(speedTimer) { _ in
+                guard mode == .speed else { return }
+
+                if speedPause {
+                    speedCounter += 1
+
+                    // пауза ~2 секунды
+                    if speedCounter >= 20 {
+                        speedCounter = 0
+                        speedPause = false
+                    }
+
+                    return
+                }
+
+                // быстрое мигание
+                speedFlash.toggle()
+
+                speedCounter += 1
+
+                // серия 3-6 вспышек
+                if speedCounter >= Int.random(in: 6...12) {
+                    speedCounter = 0
+                    speedPause = true
+                    speedFlash = false
+                }
+            }
+    }
+}
+
+
+// MARK: - Private
+
+private extension AnimatedPracticeIcon {
+
+    var animation: Animation {
+        switch mode {
+
+        case .focus:
+            return .default
+
+        case .speed:
+            return .easeInOut(duration: 0.12)
+
+        case .survival:
+            return .default
+
+        case .rush:
+            return .easeInOut(duration: 1.0)
+                .repeatForever(autoreverses: true)
+        }
+    }
+
+
+    // MARK: Speed
+
+    var speedColor: Color {
+        speedFlash ? Color(red: 1.0, green: 0.85, blue: 0.35) : mode.accentColor
+    }
+
+
+    // MARK: Rush
+
+    var rushScaleX: CGFloat {
+        mode == .rush
+            ? (animate ? 0.96 : 1.03)
+            : 1
+    }
+
+    var rushScaleY: CGFloat {
+        mode == .rush
+            ? (animate ? 1.05 : 0.95)
+            : 1
+    }
+
+    var rushRotation: Double {
+        mode == .rush
+            ? (animate ? 2 : -2)
+            : 0
+    }
+
+    var rushOffset: CGFloat {
+        mode == .rush
+            ? (animate ? -0.8 : 0.8)
+            : 0
+    }
 }

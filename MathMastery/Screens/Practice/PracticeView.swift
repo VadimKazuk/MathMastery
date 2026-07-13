@@ -257,7 +257,8 @@ private extension PracticeView {
             PracticeResultView(
                 viewModel: .init(
                     serviceContainer: serviceContainer,
-                    session: session
+                    session: session,
+                    isPersonalBest: viewModel.isBest(session)
                 ),
                 retryAction: {
 

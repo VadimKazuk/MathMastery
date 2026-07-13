@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct ProfileView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
@@ -21,9 +22,8 @@ struct ProfileView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     profileHeader
-                    //                    statsRow
-                    //                    achievementsSection
                     personalBestsSection
+                    activitySection
                     recentSessionsPreview
 
                     NavigationLink {
@@ -47,37 +47,17 @@ struct ProfileView: View {
                 .padding(16)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            //            .toolbar {
-            //                ToolbarItem(placement: .navigationBarLeading) {
-            //                    Text("MathMastery")
-            //                        .font(.system(size: 28, weight: .bold, design: .rounded))
-            //                        .foregroundColor(AppColor.commonAccentBlue)
-            //                        .fixedSize()
-            //                }
-            //                .sharedBackgroundVisibility(.hidden)
-            //
-            //                ToolbarItem(placement: .navigationBarTrailing) {
-            //                    NavigationLink {
-            //                        SettingsView(
-            //                            viewModel: .init(serviceContainer: serviceContainer)
-            //                        )
-            //                        .toolbar(.hidden, for: .tabBar)
-            //                    } label: {
-            //                        Image(systemName: "gearshape.fill")
-            //                            .font(.system(size: 20, weight: .semibold))
-            //                            .foregroundColor(.primary)
-            //                            .frame(width: 36, height: 36)
-            //                    }
-            //                }
-            //            }
-            //            .toolbarBackground(Color.white, for: .navigationBar)
             .sheet(item: $selectedSession) { session in
                 PracticeResultView(
-                    viewModel: .init(serviceContainer: serviceContainer, session: session)
+                    viewModel: .init(
+                        serviceContainer: serviceContainer,
+                        session: session,
+                        isPersonalBest: viewModel.isBest(session)
+                    )
                 )
             }
         }
-        .task {
+        .onAppear {
             viewModel.loadSessions()
 
             let currentXP = viewModel.totalXP
@@ -108,137 +88,118 @@ struct ProfileView: View {
                 }
             }
         }
-
     }
-
 
     // MARK: - Header
     private var profileHeader: some View {
-        VStack(spacing: 20) {
-            // Горизонтальный блок: Аватар + Текст
-            HStack(spacing: 16) {
-
-                Group {
-                    if let avatar = viewModel.profileImage {
-                        Image(uiImage: avatar)
-                            .resizable()
-                            .scaledToFill()
-                    } else {
-                        Image(systemName: "person.crop.circle")
-                            .resizable()
-                            .scaledToFill()
-                            .foregroundColor(.gray)
+        Button {
+            viewModel.openGameCenter()
+        } label: {
+            VStack(spacing: 20) {
+                HStack(spacing: 16) {
+                    Group {
+                        if let avatar = viewModel.profileImage {
+                            Image(uiImage: avatar)
+                                .resizable()
+                                .scaledToFill()
+                        } else {
+                            Image(systemName: "person.crop.circle")
+                                .resizable()
+                                .scaledToFill()
+                                .foregroundColor(.gray.opacity(0.7))
+                        }
                     }
-                }
-                .frame(width: 72, height: 72)
-                .clipShape(Circle())
+                    .frame(width: 72, height: 72)
+                    .clipShape(Circle())
 
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(viewModel.profileName)
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
 
-                VStack(alignment: .leading, spacing: 4) {
-
-                    Text(viewModel.profileName)
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-
-                    Text("MATHEMATICIAN APPRENTICE")
-                        .font(.system(size: 11, weight: .bold))
-                        .tracking(1.0)
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                Button {
-                    viewModel.openGameCenter()
-                } label: {
-                    Image(systemName: "gamecontroller.fill")
-                        .font(.system(size: 18, weight: .semibold))
+                        HStack(spacing: 4) {
+                            Image(systemName: "gamecontroller.fill")
+                            Text("Game Center")
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.blue.opacity(0.6))
+                        }
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(.blue)
-                        .frame(width: 42, height: 42)
-                        .background(
-                            Circle()
-                                .fill(Color.blue.opacity(0.12))
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-
-            // Кастомный индикатор уровня и XP (на всю ширину под ними)
-            VStack(spacing: 8) {
-                HStack {
-                    Label {
-                        Text("LEVEL \(viewModel.level)")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(.blue)
-                    } icon: {
-                        Image(systemName: "bolt.shield.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.blue)
-                            .symbolEffect(.pulse.byLayer, options: .repeating)
+                        .padding(.top, 2)
                     }
 
                     Spacer()
 
-                    HStack(spacing: 3) {
-                        Text("\(displayedXP)")
-                            .contentTransition(.numericText())
-                            .animation(
-                                animateXP ? .easeOut(duration: 1) : nil,
-                                value: displayedXP
-                            )
-
-                        Text("/ \(viewModel.nextLevelXP) XP")
-                    }
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(.secondary)
-                }
-
-                // Кастомный плавный ProgressBar
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color(.systemGray6))
-                            .frame(height: 8)
-
-                        Capsule()
-                            .fill(AppColor.commonAccentBlue)
-                            .frame(
-                                width: geo.size.width * animatedProgress,
-                                height: 8
+                    NavigationLink {
+                        SettingsView(viewModel: .init(serviceContainer: serviceContainer))
+                            .toolbar(.hidden, for: .tabBar)
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .frame(width: 42, height: 42)
+                            .background(
+                                Circle()
+                                    .fill(Color(.systemGray5).opacity(0.5))
                             )
                     }
+                    .buttonStyle(.plain)
                 }
-                .frame(height: 8)
+
+                VStack(spacing: 8) {
+                    HStack {
+                        Label {
+                            Text("LEVEL \(viewModel.level)")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundColor(.blue)
+                        } icon: {
+                            Image(systemName: "bolt.shield.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.blue)
+                                .symbolEffect(.pulse.byLayer, options: .repeating)
+                        }
+
+                        Spacer()
+
+                        HStack(spacing: 3) {
+                            Text("\(displayedXP)")
+                                .contentTransition(.numericText())
+                                .animation(
+                                    animateXP ? .easeOut(duration: 1) : nil,
+                                    value: displayedXP
+                                )
+
+                            Text("/ \(viewModel.nextLevelXP) XP")
+                        }
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
+                    }
+
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color(.systemGray6))
+                                .frame(height: 8)
+
+                            Capsule()
+                                .fill(AppColor.commonAccentBlue)
+                                .frame(
+                                    width: geo.size.width * animatedProgress,
+                                    height: 8
+                                )
+                        }
+                    }
+                    .frame(height: 8)
+                }
             }
+            .padding(20)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(24)
+            .shadow(color: Color.black.opacity(0.03), radius: 12, x: 0, y: 6)
         }
-        .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(24)
-        .shadow(color: Color.black.opacity(0.03), radius: 12, x: 0, y: 6)
-        .contentShape(Rectangle())
+        .buttonStyle(.plain)
     }
-
-    // MARK: - Stats
-    private var statsRow: some View {
-        HStack(spacing: 14) {
-            StatCard(title: "ACCURACY", value: "\(viewModel.overallAccuracy)%", icon: "checkmark.circle.fill", iconColor: .green)
-            StatCard(title: "FASTEST", value: String(format: "%.1fs", viewModel.fastestTime), icon: "timer", iconColor: .blue)
-            StatCard(title: "AVERAGE", value: String(format: "%.1fs", viewModel.overallAverageTime), icon: "gauge", iconColor: .purple)
-        }
-    }
-
-    //    private var achievementsSection: some View {
-    //        VStack(alignment: .leading, spacing: 12) {
-    //            Text("Recent Achievements")
-    //                .font(.system(size: 16, weight: .bold, design: .rounded))
-    //
-    //            HStack(spacing: 16) {
-    //                AchievementBadge(icon: "bolt.fill", color: .green, title: "Speed Demon")
-    //                AchievementBadge(icon: "checkmark.seal.fill", color: .blue, title: "Perfect Week")
-    //                AchievementBadge(icon: "crown.fill", color: .orange, title: "Grandmaster")
-    //            }
-    //        }
-    //    }
 
     @ViewBuilder
     private var recentSessionsPreview: some View {
@@ -248,7 +209,10 @@ struct ProfileView: View {
                     .font(.system(size: 16, weight: .bold, design: .rounded))
 
                 ForEach(viewModel.sessions.prefix(3), id: \.id) { session in
-                    HistoryRow(session: session) {_ in
+                    HistoryRow(
+                        session: session,
+                        isPersonalBest: viewModel.isBest(session)
+                    ) { _ in
                         selectedSession = session
                     }
                 }
@@ -260,6 +224,7 @@ struct ProfileView: View {
         HStack(spacing: 14) {
             PersonalBestCard(
                 title: "SPEED",
+                mode: .speed,
                 icon: "bolt.fill",
                 iconColor: .orange,
                 session: viewModel.bestSpeed
@@ -269,6 +234,7 @@ struct ProfileView: View {
 
             PersonalBestCard(
                 title: "SURVIVAL",
+                mode: .survival,
                 icon: "heart.fill",
                 iconColor: .red,
                 session: viewModel.bestSurvival
@@ -278,12 +244,178 @@ struct ProfileView: View {
 
             PersonalBestCard(
                 title: "RUSH",
+                mode: .rush,
                 icon: "flame.fill",
                 iconColor: .orange,
                 session: viewModel.bestRush
             ) {
                 selectedSession = $0
             }
+        }
+    }
+
+    private var activitySection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Activity")
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 8) {
+                    activityMenu(
+                        title: viewModel.selectedMode.title,
+                        icon: "line.3.horizontal.decrease.circle"
+                    ) {
+                        ForEach(ActivityModeFilter.allCases) { filter in
+                            Button(filter.title) {
+                                viewModel.selectedMode = filter
+                            }
+                        }
+                    }
+                    activityMenu(
+                        title: viewModel.selectedMetric.title,
+                        icon: "chart.bar"
+                    ) {
+                        ForEach(ActivityMetric.allCases) { metric in
+                            Button(metric.title) {
+                                viewModel.selectedMetric = metric
+                            }
+                        }
+                    }
+                    activityMenu(
+                        title: viewModel.selectedRange.title,
+                        icon: "calendar"
+                    ) {
+                        ForEach(ActivityRange.allCases) { range in
+                            Button(range.title) {
+                                viewModel.selectedRange = range
+                            }
+                        }
+                    }
+                }
+
+                Chart(viewModel.chartPoints) { point in
+                    let visualValue = max(point.value, 1)
+
+                    BarMark(
+                        x: .value("Day", point.date),
+                        y: .value(viewModel.selectedMetric.title, visualValue),
+                        width: .fixed(
+                            viewModel.selectedRange == .last7Days ? 12 : 6
+                        )
+                    )
+                    .cornerRadius(4)
+                    .foregroundStyle(
+                        point.value == 0
+                        ? Color(.systemGray6)
+                        : (point.isCurrent ? AppColor.commonAccentBlue : Color(.systemGray4))
+                    )
+                }
+                .chartXAxis {
+                    AxisMarks(
+                        values: viewModel.xAxisDates
+                    ) { value in
+
+                        AxisValueLabel {
+                            if let date = value.as(Date.self) {
+                                Text(
+                                    viewModel.selectedRange.xAxisLabel(for: date)
+                                )
+                            }
+                        }
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .trailing) { value in
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel {
+                            if let number = value.as(Double.self) {
+                                Text(viewModel.formatYAxis(number))
+                                    .font(.system(size: 10, weight: .medium, design: .monospaced)) // ← важно!
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 25, alignment: .leading) // фиксированная ширина
+                                    .multilineTextAlignment(.leading)
+                            }
+                        }
+                    }
+                }
+                .chartYScale(domain: viewModel.yDomain)
+                .chartPlotStyle { plotArea in
+                    plotArea
+                        .frame(maxWidth: .infinity)
+                }
+                .frame(height: 140)
+                .frame(maxWidth: .infinity)
+                .padding(.leading, 8)
+                .padding(.top, 4)
+
+                Divider()
+                    .background(Color(.systemGray6))
+
+                HStack(alignment: .center) {
+                    statItem(
+                        value: viewModel.chartSummary?.primary.formattedValue ?? "0",
+                        label: viewModel.chartSummary?.primary.title.uppercased() ?? "SOLVED"
+                    )
+                    Spacer()
+                    statItem(
+                        value: viewModel.chartSummary?.secondary.formattedValue ?? "0",
+                        label: viewModel.chartSummary?.secondary.title.uppercased() ?? "SESSIONS"
+                    )
+                    Spacer()
+                    statItem(
+                        value: viewModel.chartSummary?.tertiary.formattedValue ?? "0",
+                        label: viewModel.chartSummary?.tertiary.title.uppercased() ?? "XP"
+                    )
+                }
+                .padding(.top, 4)
+            }
+            .padding(20)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(24)
+            .shadow(color: Color.black.opacity(0.02), radius: 10, x: 0, y: 5)
+        }
+    }
+
+    private func statItem(value: String, label: String) -> some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+            Text(label)
+                .font(.system(size: 10, weight: .heavy))
+                .foregroundColor(.secondary)
+                .tracking(0.5)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private func activityMenu<Content: View>(
+        title: String,
+        icon: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+
+        Menu {
+            content()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                Text(title)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.blue.opacity(0.6))
+            }
+            .font(.system(size: 10, weight: .bold))
+            .frame(maxWidth: .infinity)
+            .padding(8)
+            .foregroundColor(AppColor.commonAccentBlue)
+            .background(AppColor.commonAccentBlue.opacity(0.1))
+            .cornerRadius(4)
+
         }
     }
 }
@@ -378,6 +510,7 @@ struct AchievementBadge: View {
 
 struct PersonalBestCard: View {
     let title: String
+    let mode: PracticeMode
     let icon: String
     let iconColor: Color
     let session: PracticeSession?
@@ -392,13 +525,9 @@ struct PersonalBestCard: View {
             VStack(spacing: 8) {
                 HStack {
                     Spacer()
-
-                    Image(systemName: "trophy.fill")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.yellow)
+                    ShimmerTrophy()
                         .opacity(session == nil ? 0.25 : 1)
                 }
-
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(iconColor)
@@ -408,7 +537,7 @@ struct PersonalBestCard: View {
                     .foregroundColor(.secondary)
 
                 if let session {
-                    Text("\(session.questionsCount)")
+                    Text("\(session.correctAnswers)")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
 
@@ -428,8 +557,10 @@ struct PersonalBestCard: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
             .padding(.horizontal, 10)
-            .background(Color(.secondarySystemGroupedBackground))
-            .cornerRadius(20)
+            .background {
+                Color.white
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
         .disabled(session == nil)

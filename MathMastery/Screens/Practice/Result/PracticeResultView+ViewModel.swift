@@ -7,8 +7,15 @@ extension PracticeResultView {
 
         let mistakes: [PracticeAnswer]
 
-        init(serviceContainer: ServiceContainer, session: PracticeSession) {
+        let isPersonalBest: Bool
+
+        init(
+            serviceContainer: ServiceContainer,
+            session: PracticeSession,
+            isPersonalBest: Bool = false
+        ) {
             self.session = session
+            self.isPersonalBest = isPersonalBest
             self.mistakes = session.answers.filter { !$0.isCorrect }
         }
 

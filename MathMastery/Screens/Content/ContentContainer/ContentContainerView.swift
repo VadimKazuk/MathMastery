@@ -58,8 +58,8 @@ struct ContentContainerView: View {
         }
         .tint(AppColor.commonAccentBlue)
 //        .preferredColorScheme(.light)
-        .toast(serviceContainer: serviceContainer)
-        .progressIndicator(serviceContainer: serviceContainer)
+//        .toast(serviceContainer: serviceContainer)
+//        .progressIndicator(serviceContainer: serviceContainer)
     }
 }
 

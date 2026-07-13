@@ -15,11 +15,11 @@ struct LearnView: View {
                 contentView
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .toolbar {
-                leadingToolbarItem
-                profileToolbarItem
-            }
-            .toolbarBackground(Color.white, for: .navigationBar)
+//            .toolbar {
+//                leadingToolbarItem
+//                profileToolbarItem
+//            }
+//            .toolbarBackground(Color.white, for: .navigationBar)
         }
         .onAppear {
             viewModel.loadSessions()
@@ -70,9 +70,8 @@ private extension LearnView {
     var focusTableSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("SET FOCUS TABLE")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundColor(.secondary)
+                Text("Set Focus Table")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
 
                 Spacer()
 
@@ -187,7 +186,7 @@ private extension LearnView {
                     .padding(.vertical, 8)
                     .background {
                         Capsule()
-                            .fill(viewModel.currentEquationLevel.color)
+                            .fill(viewModel.currentEquationLevel.opacityСolor)
                     }
             }
             .frame(maxWidth: .infinity)

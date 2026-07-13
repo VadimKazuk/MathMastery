@@ -10,6 +10,8 @@ extension MainContainerView {
         private var subscriptions = Set<AnyCancellable>()
         private let serviceContainer: ServiceContainer
 
+        @Published var splashState: SplashState = .loading
+
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
 
@@ -38,7 +40,7 @@ extension MainContainerView {
 
             //TEMP
 
-            self.contentViewType = .home
+            self.splashState = .intro
 
 //            let messagingService = serviceContainer.resolve(MessagingService.self)
 //            let restService = serviceContainer.resolve(RESTService.self)

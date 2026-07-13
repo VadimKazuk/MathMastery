@@ -1,10 +1,14 @@
 import Combine
 import SwiftUI
 
-extension ClassicPracticeView {
+extension FocusPracticeView {
     final class ViewModel: ObservableObject {
-
+        private let serviceContainer: ServiceContainer
+        private let accountService: AccountService
         private let swiftDB: SwiftDataService
+
+        let mode: FocusPracticeMode
+        let focusTable: Int?
 
         @Published private(set) var questionIndex = 0
         @Published var answerText = ""
@@ -18,10 +22,19 @@ extension ClassicPracticeView {
 
         private let questionsAmount: Int = 5
 
-        init(serviceContainer: ServiceContainer) {
+        init(
+            serviceContainer: ServiceContainer,
+            mode: FocusPracticeMode,
+            focusTable: Int?
+        ) {
+            self.serviceContainer = serviceContainer
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
-            // Инициализируем пул вопросов по умной системе весов
-            questions = generateQuestions()
+            self.accountService = serviceContainer.resolve(AccountService.self)
+
+            self.mode = mode
+            self.focusTable = focusTable
+
+            self.questions = generateQuestions()
         }
 
         var currentQuestion: PracticeQuestion {
@@ -36,30 +49,39 @@ extension ClassicPracticeView {
             Double(completedQuestions) / Double(questions.count)
         }
 
-        // MARK: - Smart Question Generation Integration
+        // MARK: - QUESTIONS
 
         func generateQuestions() -> [PracticeQuestion] {
-            // 1. Извлекаем историю всех прошлых ответов из SwiftData
             let allAnswers = swiftDB.fetchSessions().flatMap { $0.answers }
 
-            // 2. Запрашиваем у генератора уникальный набор ячеек для текущей сессии
             let selectedCells = SmartQuestionGenerator.generateSessionCells(
                 allAnswers: allAnswers,
                 amount: questionsAmount
             )
 
-            // 3. Превращаем выбранные ячейки в массив PracticeQuestion с визуальным перемешиванием множителей
-            let generatedQuestions = selectedCells.map { cell -> PracticeQuestion in
-                let shouldSwap = Bool.random()
-                return PracticeQuestion(
-                    left: shouldSwap ? cell.right : cell.left,
-                    right: shouldSwap ? cell.left : cell.right
-                )
-            }
+            switch mode {
 
-            // Перемешиваем готовый набор, чтобы новые/сложные примеры не шли подряд кучей
-            return generatedQuestions.shuffled()
+            case .all:
+                return selectedCells
+                    .map { PracticeQuestion(left: $0.left, right: $0.right) }
+                    .shuffled()
+
+            case .table(let table):
+
+                let generated = selectedCells.map { cell in
+                    let shouldSwap = Bool.random()
+
+                    let left = shouldSwap ? cell.right : table
+                    let right = shouldSwap ? table : cell.right
+
+                    return PracticeQuestion(left: left, right: right)
+                }
+
+                return generated.shuffled()
+            }
         }
+
+        // MARK: - RESET
 
         func reset() {
             questionIndex = 0
@@ -70,10 +92,10 @@ extension ClassicPracticeView {
             isAnswered = false
 
             answers.removeAll()
-
-            // Перегенерируем пул по умной схеме
             questions = generateQuestions()
         }
+
+        // MARK: - INPUT
 
         func appendDigit(_ digit: Int) {
             guard !isAnswered, answerText.count < 3 else { return }
@@ -84,6 +106,8 @@ extension ClassicPracticeView {
             guard !isAnswered, !answerText.isEmpty else { return }
             answerText.removeLast()
         }
+
+        // MARK: - ANSWER
 
         func submitAnswer() {
             guard !isAnswered, let answer = Int(answerText) else { return }
@@ -105,12 +129,14 @@ extension ClassicPracticeView {
                     right: currentQuestion.right,
                     correctAnswer: currentQuestion.answer,
                     userAnswer: answer,
-                    mode: .classic
+                    mode: .focus
                 )
             )
 
             completedQuestions += 1
         }
+
+        // MARK: - NAVIGATION
 
         func moveNextOrResult() -> PracticeSession? {
             if questionIndex == questions.count - 1 {
@@ -127,11 +153,12 @@ extension ClassicPracticeView {
             return nil
         }
 
-        // MARK: - SwiftData
+        // MARK: - SAVE
 
         private func saveSession() -> PracticeSession {
             let session = PracticeSession(
-                mode: .classic,
+                mode: .focus,
+                focusTable: focusTable,
                 duration: nil,
                 difficulty: nil,
                 correctAnswers: correctCount,
@@ -141,13 +168,16 @@ extension ClassicPracticeView {
                 answers: answers
             )
 
+            let xp = XPSystem.xp(for: session)
+            accountService.addXP(xp)
+
             swiftDB.saveSession(session)
+            
             return session
         }
 
         func makeResult() -> PracticeSession {
-            let session = saveSession()
-            return session
+            saveSession()
         }
     }
 }

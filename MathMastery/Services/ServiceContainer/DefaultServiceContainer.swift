@@ -30,16 +30,22 @@ final class DefaultServiceContainer: ServiceContainer {
                 )
 
                 self?.register(
-                    type: ToastManager.self,
+                    type: GameCenterServiceProtocol.self,
                     as: .singleton,
-                    factory: ToastManager()
+                    factory: GameCenterService()
                 )
 
-                self?.register(
-                    type: ProgressManager.self,
-                    as: .singleton,
-                    factory: ProgressManager()
-                )
+//                self?.register(
+//                    type: ToastManager.self,
+//                    as: .singleton,
+//                    factory: ToastManager()
+//                )
+//
+//                self?.register(
+//                    type: ProgressManager.self,
+//                    as: .singleton,
+//                    factory: ProgressManager()
+//                )
 
                 self?.register(
                     type: SwiftDataService.self,

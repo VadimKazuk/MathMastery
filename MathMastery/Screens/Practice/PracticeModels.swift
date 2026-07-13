@@ -1,10 +1,10 @@
 import SwiftUI
 
 enum PracticeMode: String, CaseIterable, Identifiable, Hashable {
+    case focus
     case speed
-    case classic
     case survival
-    case boss
+    case rush
 
     var id: String {
         rawValue
@@ -13,79 +13,109 @@ enum PracticeMode: String, CaseIterable, Identifiable, Hashable {
     var title: String {
         switch self {
         case .speed: return "Speed"
-        case .classic: return "Classic"
+        case .focus: return "Focus"
         case .survival: return "Survival"
-        case .boss: return "Boss"
+        case .rush: return "Rush"
         }
     }
 
     var trainingFocus: String {
         switch self {
         case .speed: return "Reaction"
-        case .classic: return "Understanding"
+        case .focus: return "Understanding"
         case .survival: return "Pressure"
-        case .boss: return "Mastery"
+        case .rush: return "Mastery"
         }
     }
 
     var subtitle: String {
         switch self {
         case .speed: return "60s sprint to solve as many as possible."
-        case .classic: return "Standard pace. Focus on core mastery."
+        case .focus: return "Practice a single multiplication table until you've mastered it."
         case .survival: return "No room for error. One mistake ends it."
-        case .boss: return "Conquer one table and expose weak facts."
+        case .rush: return "Race against the timer while protecting your lives."
+        }
+    }
+
+    var timeTag: String {
+        switch self {
+        case .focus: return "2–3 min"
+        case .speed: return "1 min"
+        case .survival: return "2–5 min"
+        case .rush: return "1–2 min"
         }
     }
 
     var systemImage: String {
         switch self {
+        case .focus:
+            return "target"
+        case .speed:
+            return "bolt.fill"
+        case .survival:
+            return "heart.fill"
+        case .rush:
+            return "flame.fill"
+        }
+    }
+
+    var skillIcon: String {
+        switch self {
+        case .focus: return "checkmark.seal.fill"
         case .speed: return "timer"
-        case .classic: return "book"
-        case .survival: return "heart"
-        case .boss: return "bolt"
+        case .survival: return "heart.fill"
+        case .rush: return "chart.line.uptrend.xyaxis"
         }
     }
 
     var lottieImage: String {
         switch self {
-        case .speed: return "speed"
-        case .classic: return "book"
+        case .speed: return "bolt"
+        case .focus: return "target"
         case .survival: return "heart"
-        case .boss: return "man"
+        case .rush: return "fire"
         }
     }
 
     var accentColor: Color {
         switch self {
-        case .speed: return Color(red: 0.68, green: 0.25, blue: 0.16)
-        case .classic: return AppColor.commonAccentBlue
-        case .survival: return Color(red: 0.72, green: 0.10, blue: 0.14)
-        case .boss: return Color(red: 0.18, green: 0.19, blue: 0.22)
+        case .focus:
+            return Color.blue
+        case .speed:
+            return Color(red: 0.84, green: 0.56, blue: 0.00) // Amber
+        case .survival:
+            return Color(red: 0.82, green: 0.15, blue: 0.17) // Red
+        case .rush:
+            return Color(red: 0.93, green: 0.39, blue: 0.05) // Orange
         }
     }
 
     var backgroundColor: Color {
         switch self {
-        case .speed: return Color(red: 0.98, green: 0.92, blue: 0.90)
-        case .classic: return Color(red: 0.88, green: 0.94, blue: 1.0)
-        case .survival: return Color(red: 1.0, green: 0.94, blue: 0.94)
-        case .boss: return Color(red: 0.90, green: 0.90, blue: 0.91)
+        case .focus:
+            return Color(red: 0.90, green: 0.95, blue: 1.00)
+        case .speed:
+            return Color(red: 1.00, green: 0.96, blue: 0.87)
+        case .survival:
+            return Color(red: 1.00, green: 0.92, blue: 0.92)
+        case .rush:
+            return Color(red: 1.00, green: 0.93, blue: 0.88)
         }
-    }
-}
-
-extension PracticeMode {
-    var raw: String {
-        rawValue
     }
 }
 
 enum PracticeRoute: Hashable {
     case speed
-    case classic
+    case focusTableSelection
+    case focusPractice(table: Int?)
     case survival
-    case boss
+    case rush
     case result(PracticeSession)
+}
+
+enum FocusPracticeTarget: Hashable {
+    case all
+    case table(Int)
 }
 
 struct PracticeQuestion: Hashable {
@@ -118,7 +148,6 @@ struct PracticeResult: Hashable {
     let summary: String
     let metrics: [PracticeResultMetric]
     let answers: [PracticeAnswer]
-    let bossTable: Int?
 }
 
 struct AnswerOption: Identifiable, Hashable {
@@ -182,6 +211,8 @@ final class PracticeSession {
     var date: Date
     var modeRaw: String
 
+    var focusTable: Int?
+
     var duration: Int?
     var difficulty: String?
 
@@ -195,6 +226,7 @@ final class PracticeSession {
 
     init(
         mode: PracticeMode,
+        focusTable: Int? = nil,
         duration: Int? = nil,
         difficulty: String? = nil,
         correctAnswers: Int,
@@ -207,6 +239,8 @@ final class PracticeSession {
         self.date = Date()
         self.modeRaw = mode.rawValue
 
+        self.focusTable = focusTable
+
         self.duration = duration
         self.difficulty = difficulty
 
@@ -218,7 +252,7 @@ final class PracticeSession {
     }
 
     var mode: PracticeMode {
-        PracticeMode(rawValue: modeRaw) ?? .classic
+        PracticeMode(rawValue: modeRaw) ?? .focus
     }
     
     var accuracy: Int {
@@ -244,24 +278,60 @@ enum MistakeLevel {
     case high
     case hard
 
-    var color: Color {
+    var baseColor: Color {
         switch self {
         case .none:
-            return Color.gray.opacity(0.10)
-
+            return .gray
         case .perfect:
-            return Color.green.opacity(0.25)
-
+            return Color.green
         case .medium:
-            return Color.yellow.opacity(0.25)
-
+            return Color(red: 0.98, green: 0.78, blue: 0.20) // .yellow
         case .high:
-            return Color.orange.opacity(0.21)
-
+            return Color(red: 0.95, green: 0.55, blue: 0.18) // .orange
         case .hard:
-            return Color.red.opacity(0.32)
+            return Color(red: 0.90, green: 0.25, blue: 0.25) // .red
         }
     }
 
+    var opacityСolor: Color {
+        switch self {
+        case .none:
+            return baseColor.opacity(0.10)
+        case .perfect:
+            return baseColor.opacity(0.20)
+        case .medium:
+            return baseColor.opacity(0.22)
+        case .high:
+            return baseColor.opacity(0.24)
+        case .hard:
+            return baseColor.opacity(0.28)
+        }
+    }
 }
 
+enum OverallLevel {
+    case none
+    case weak
+    case improving
+    case good
+    case excellent
+
+    var color: Color {
+        switch self {
+        case .none:
+            return Color.gray.opacity(0.2)
+
+        case .weak:
+            return Color.red.opacity(0.85)
+
+        case .improving:
+            return Color.orange.opacity(0.85)
+
+        case .good:
+            return Color.yellow.opacity(0.85)
+
+        case .excellent:
+            return Color.green.opacity(0.85)
+        }
+    }
+}

@@ -3,7 +3,8 @@ import SwiftUI
 
 extension SurvivalPracticeView {
     final class ViewModel: ObservableObject {
-
+        private let serviceContainer: ServiceContainer
+        private let accountService: AccountService
         private let swiftDB: SwiftDataService
 
         @Published private(set) var lives = 3
@@ -25,8 +26,10 @@ extension SurvivalPracticeView {
         private var didFinish = false
 
         init(serviceContainer: ServiceContainer) {
-            swiftDB = serviceContainer.resolve(SwiftDataService.self)
-            // Инициализируем первый вопрос по общей умной системе весов
+            self.serviceContainer = serviceContainer
+            self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
+            self.accountService = serviceContainer.resolve(AccountService.self)
+
             currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
         }
@@ -148,7 +151,11 @@ extension SurvivalPracticeView {
                 answers: answers
             )
 
+            let xp = XPSystem.xp(for: session)
+            accountService.addXP(xp)
+
             swiftDB.saveSession(session)
+            
             return session
         }
 

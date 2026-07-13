@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct MultiplicationGridView: View {
     @ObservedObject var viewModel: LearnView.ViewModel
 
@@ -91,7 +90,7 @@ struct MultiplicationGridView: View {
 
                     MultiplicationCell(
                         text: "\(cell.value)",
-                        color: cell.level.color,
+                        color: viewModel.isFocusMode ? cell.level.opacityСolor : Color.gray.opacity(0.10),
                         textColor: viewModel.cellTextColor(rowIndex: rowIndex, columnIndex: columnIndex),
                         borderColor: viewModel.cellBorderColor(rowIndex: rowIndex, columnIndex: columnIndex),
                         cellSize: cellSize,

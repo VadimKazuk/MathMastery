@@ -53,10 +53,6 @@ extension LearnView {
             mode == .focus
         }
 
-        var columnSelection: Int? {
-            selectedColumn
-        }
-
         // MARK: - Equation UI
         var equationTitle: String {
             guard
@@ -67,17 +63,6 @@ extension LearnView {
             }
 
             return "\(row) × \(col) = \(row * col)"
-        }
-
-        var equationSubtitle: String {
-            guard
-                let row = selectedRow,
-                let col = selectedColumn
-            else {
-                return "Tap any cell to begin"
-            }
-
-            return "\(row) groups of \(col) makes \(row * col)"
         }
 
         var equationAccuracyText: String {
@@ -185,12 +170,6 @@ extension LearnView {
             updateActiveCell()
         }
 
-        private func selectCell(row: Int, column: Int) {
-            selectedRow = row
-            selectedColumn = column
-            updateActiveCell()
-        }
-
         func selectCell(rowIndex: Int, columnIndex: Int) {
             selectedRow = numbers[rowIndex]
             selectedColumn = numbers[columnIndex]
@@ -216,10 +195,6 @@ extension LearnView {
             }
 
             activeCell = SelectedCell(row: r, column: c)
-        }
-
-        private func isSelected(row: Int, column: Int) -> Bool {
-            selectedRow == row && selectedColumn == column
         }
 
         private func isActiveCell(rowIndex: Int, columnIndex: Int) -> Bool {
@@ -256,13 +231,6 @@ extension LearnView {
         }
 
         // MARK: - UI colors
-        private func cellColor(rowIndex: Int, columnIndex: Int) -> Color {
-            guard isFocusMode else { return .clear }
-
-            return isActiveCell(rowIndex: rowIndex, columnIndex: columnIndex)
-                ? AppColor.commonAccentBlue
-                : .clear
-        }
 
         func cellTextColor(rowIndex: Int, columnIndex: Int) -> Color {
             guard isFocusMode else { return .primary }
@@ -311,13 +279,6 @@ extension LearnView {
             return .gray.opacity(0.35)
         }
 
-        private func focusTableColor(_ number: Int) -> Color {
-            focusTable == number ? AppColor.commonAccentBlue : .white
-        }
-
-        private func focusTableTextColor(_ number: Int) -> Color {
-            focusTable == number ? .white : .primary
-        }
 
         // MARK: - Helpers
         private func closestCell(to point: CGPoint) -> SelectedCell? {

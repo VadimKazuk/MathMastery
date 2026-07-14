@@ -31,7 +31,7 @@ struct HomeView: View {
 
     private var weeklyMilestoneCard: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Header Row
+
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Weekly Milestone")
@@ -42,8 +42,6 @@ struct HomeView: View {
                 }
 
                 Spacer()
-
-                // Streak Counter
 
                     VStack(alignment: .center, spacing: 0) {
                         HStack {
@@ -61,52 +59,17 @@ struct HomeView: View {
 
             }
 
-            // Days Grid/Row
-            HStack(spacing: 6) {
-                WeeklyDayView(day: "MON", status: .completed)
-                WeeklyDayView(day: "TUE", status: .completed)
-                WeeklyDayView(day: "WED", status: .completed)
-                WeeklyDayView(day: "THU", status: .current)
-                WeeklyDayView(day: "FRI", status: .locked)
-                WeeklyDayView(day: "SAT", status: .locked)
-                WeeklyDayView(day: "SUN", status: .reward)
+            HStack {
+                ForEach(viewModel.days) { item in
+                    WeeklyDayView(
+                        day: item.day,
+                        status: item.status
+                    )
+                }
             }
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
 
-            // Inner Next Milestone Box
-//            VStack(spacing: 12) {
-//                HStack {
-//                    Text("Next Milestone")
-//                        .font(.system(size: 15, weight: .bold))
-//                    Spacer()
-//                    Text("3 DAYS TO GO")
-//                        .font(.system(size: 13, weight: .bold))
-//                        .foregroundColor(AppColor.commonAccentBlue)
-//                }
-//
-//                // Progress Bar
-//                GeometryReader { geo in
-//                    ZStack(alignment: .leading) {
-//                        Capsule()
-//                            .fill(Color(.systemGray5))
-//                        Capsule()
-//                            .fill(AppColor.commonAccentBlue)
-//                            .frame(width: geo.size.width * 0.57) // Mock progress representation
-//                    }
-//                }
-//                .frame(height: 8)
-//
-//                Text("Complete today's session to unlock the\n'Elite Solver' badge!")
-//                    .font(.system(size: 13))
-//                    .italic()
-//                    .foregroundColor(.secondary)
-//                    .multilineTextAlignment(.center)
-//                    .padding(.top, 4)
-//            }
-//            .padding()
-//            .background(Color(.systemGroupedBackground))
-//            .cornerRadius(16)
-
-            // Big CTA Button
             Button(action: viewModel.resumeSession) {
                 HStack(spacing: 8) {
                     Spacer()
@@ -118,7 +81,6 @@ struct HomeView: View {
                 .padding(.vertical, 16)
                 .background(AppColor.commonAccentBlue)
                 .cornerRadius(24)
-//                .shadow(color: AppColor.commonAccentBlue.opacity(0.3), radius: 8, x: 0, y: 4)
             }
         }
         .padding(20)
@@ -254,6 +216,12 @@ enum DayStatus {
     case completed, current, locked, reward
 }
 
+struct WeeklyDay: Identifiable {
+    let id = UUID()
+    let day: String
+    let status: DayStatus
+}
+
 struct WeeklyDayView: View {
     let day: String
     let status: DayStatus
@@ -274,7 +242,7 @@ struct WeeklyDayView: View {
                     .foregroundColor(iconColor)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(width: 40)
         .padding(.vertical, 8)
         .background(pillBgColor)
         .clipShape(Capsule())

@@ -30,12 +30,24 @@ extension ProfileView {
         @Published var gameCenterName: String?
         @Published var gameCenterAvatar: UIImage?
 
+        @Published var learningGrid = MultiplicationGridState(
+            numbers: Array(2...9),
+            cells: Array(
+                repeating: Array(
+                    repeating: .empty,
+                    count: 8
+                ),
+                count: 8
+            )
+        )
+
         private let serviceContainer: ServiceContainer
         private let swiftDB: SwiftDataService
         private let accountService: AccountService
         private let gameCenterService: GameCenterServiceProtocol
         
         private let chartEngine = ActivityChartEngine()
+        private let learnEngine = LearnEngine()
 
         private var cancellables = Set<AnyCancellable>()
 
@@ -159,6 +171,15 @@ extension ProfileView {
         func loadSessions() {
             sessions = swiftDB.fetchSessions()
                 .sorted { $0.date > $1.date }
+
+            let state = learnEngine.makeState(from: sessions)
+
+            if state.gridState.count == 8 {
+                learningGrid = MultiplicationGridState(
+                    numbers: Array(2...9),
+                    cells: state.gridState
+                )
+            }
 
             calculatePersonalBests()
             calculateOverallStats()

@@ -18,6 +18,16 @@ extension HomeView {
         @Published var drillsCompleted: Int = 13
         @Published var totalDrills: Int = 20
 
+        private(set) var days: [WeeklyDay] = [
+            WeeklyDay(day: "MON", status: .completed),
+            WeeklyDay(day: "TUE", status: .completed),
+            WeeklyDay(day: "WED", status: .completed),
+            WeeklyDay(day: "THU", status: .current),
+            WeeklyDay(day: "FRI", status: .locked),
+            WeeklyDay(day: "SAT", status: .locked),
+            WeeklyDay(day: "SUN", status: .reward)
+        ]
+
         var avatarName: String {
             "img_profile_\(accountService.profile.avatarId)"
         }

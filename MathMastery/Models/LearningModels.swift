@@ -26,3 +26,14 @@ struct CellViewState: Hashable {
     let value: Int
     let level: MistakeLevel
 }
+
+extension CellViewState {
+    static var empty: CellViewState {
+        CellViewState(
+            row: 0,
+            column: 0,
+            value: 0,
+            level: .none
+        )
+    }
+}

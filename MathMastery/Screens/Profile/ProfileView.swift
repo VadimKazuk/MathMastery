@@ -13,6 +13,9 @@ struct ProfileView: View {
 
     @State private var animateXP = false
 
+    @StateObject private var heatmapSelection = GridSelectionController()
+    @StateObject private var heatmapInteraction = GridInteractionController()
+
     init(viewModel: ViewModel) {
         self._viewModel = StateObject(wrappedValue: viewModel)
     }
@@ -24,6 +27,7 @@ struct ProfileView: View {
                     profileHeader
                     personalBestsSection
                     activitySection
+                    learningHeatmapSection
                     recentSessionsPreview
 
                     NavigationLink {
@@ -374,6 +378,48 @@ struct ProfileView: View {
             .background(Color(.secondarySystemGroupedBackground))
             .cornerRadius(24)
             .shadow(color: Color.black.opacity(0.02), radius: 10, x: 0, y: 5)
+        }
+    }
+
+    private var learningHeatmapSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Learning Heatmap")
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+
+            VStack(spacing: 16) {
+                MultiplicationGridView(
+                    grid: viewModel.learningGrid,
+                    configuration: .heatmap,
+                    selection: heatmapSelection,
+                    interaction: heatmapInteraction
+                )
+                .aspectRatio(1, contentMode: .fit)
+
+                HStack(spacing: 16) {
+                    legendItem(color: Color.colorGreenPerfect, title: "Perfect")
+                    legendItem(color: Color.colorOrangeMedium, title: "Medium")
+                    legendItem(color: Color.colorOrangeHigh, title: "Practice")
+                    legendItem(color: Color.colorOrangeHard, title: "Weak")
+                }
+            }
+            .padding(20)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+        }
+    }
+
+    private func legendItem(
+        color: Color,
+        title: String
+    ) -> some View {
+        HStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(color)
+                .frame(width: 14, height: 14)
+
+            Text(title)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundColor(.secondary)
         }
     }
 

@@ -14,7 +14,14 @@ final class DefaultServiceContainer: ServiceContainer {
     private func initServices() {
         Deferred {
             Future<Bool, Never> { [weak self] promise in
-                let _ = UserDefaultsStorageService()
+                let storageService = UserDefaultsStorageService()
+
+                let accountService = AccountService(storageService: storageService)
+                self?.register(
+                    type: AccountService.self,
+                    as: .singleton,
+                    factory: accountService
+                )
 
                 self?.register(
                     type: KeychainService.self,
@@ -23,15 +30,27 @@ final class DefaultServiceContainer: ServiceContainer {
                 )
 
                 self?.register(
-                    type: ToastManager.self,
+                    type: GameCenterServiceProtocol.self,
                     as: .singleton,
-                    factory: ToastManager()
+                    factory: GameCenterService()
                 )
 
+//                self?.register(
+//                    type: ToastManager.self,
+//                    as: .singleton,
+//                    factory: ToastManager()
+//                )
+//
+//                self?.register(
+//                    type: ProgressManager.self,
+//                    as: .singleton,
+//                    factory: ProgressManager()
+//                )
+
                 self?.register(
-                    type: ProgressManager.self,
+                    type: SwiftDataService.self,
                     as: .singleton,
-                    factory: ProgressManager()
+                    factory: SwiftDataManager()
                 )
 
                 promise(.success(true))

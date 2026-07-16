@@ -1,31 +1,42 @@
 import SwiftUI
+import Lottie
 
 struct SplashView: View {
-    @State private var hiddenProgress = true
+
+    let state: SplashState
+    let onFinished: () -> Void
 
     var body: some View {
-        ZStack {
-            VStack {
-                Image("heading_math_mastery")
+        Group {
+            switch state {
 
-                    .padding(16)
+            case .loading:
+                LottieView(
+                    name: "smile_logo",
+                    loop: true
+                )
+                .frame(height: 85)
 
-                if !hiddenProgress {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: Color.red))
-                        .scaleEffect(x: 1.5, y: 1.5)
-                }
+            case .intro:
+                LottieView(
+                    name: "MM_logo",
+                    loop: false,
+                    completion: onFinished
+                )
+                .frame(height: 150)
             }
         }
-        .onAppear {
-            withAnimation(.easeInOut) {
-                hiddenProgress = false
-            }
-        }
+
+
     }
 }
 
+enum SplashState {
+    case loading
+    case intro
+}
+
 #Preview {
-    SplashView()
+    SplashView(state: .intro, onFinished: {})
 }
 

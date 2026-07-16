@@ -31,6 +31,7 @@
 		542CF0D02FEB028C0051FA02 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = 542CF0CF2FEB028C0051FA02 /* FirebaseRemoteConfig */; };
 		542CF0D22FEB028C0051FA02 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 542CF0D12FEB028C0051FA02 /* FirebaseStorage */; };
 		542CF0D42FEB028C0051FA02 /* FirebaseStorageCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 542CF0D32FEB028C0051FA02 /* FirebaseStorageCombine-Community */; };
+		547CD9F02FEF3BC6001E616B /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 547CD9EF2FEF3BC6001E616B /* Lottie */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,15 +51,41 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		54C3345D2FEF390800E9EA7C /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		542CF0742FEAF58D0051FA02 /* MathMastery.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MathMastery.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		542CF0832FEAF58F0051FA02 /* MathMasteryTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MathMasteryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		542CF08D2FEAF58F0051FA02 /* MathMasteryUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MathMasteryUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		54A65A1D2FF096D60048A1FF /* Exceptions for "MathMastery" folder in "MathMastery" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 542CF0732FEAF58D0051FA02 /* MathMastery */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		542CF0762FEAF58D0051FA02 /* MathMastery */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				54A65A1D2FF096D60048A1FF /* Exceptions for "MathMastery" folder in "MathMastery" target */,
+			);
 			path = MathMastery;
 			sourceTree = "<group>";
 		};
@@ -94,6 +121,7 @@
 				542CF0D22FEB028C0051FA02 /* FirebaseStorage in Frameworks */,
 				542CF0D02FEB028C0051FA02 /* FirebaseRemoteConfig in Frameworks */,
 				542CF0C42FEB028C0051FA02 /* FirebaseFunctionsCombine-Community in Frameworks */,
+				547CD9F02FEF3BC6001E616B /* Lottie in Frameworks */,
 				542CF0BC2FEB028C0051FA02 /* FirebaseDatabase in Frameworks */,
 				542CF0AA2FEB028C0051FA02 /* FirebaseAnalytics in Frameworks */,
 				542CF0CE2FEB028C0051FA02 /* FirebasePerformance in Frameworks */,
@@ -161,6 +189,7 @@
 				542CF0702FEAF58D0051FA02 /* Sources */,
 				542CF0712FEAF58D0051FA02 /* Frameworks */,
 				542CF0722FEAF58D0051FA02 /* Resources */,
+				54C3345D2FEF390800E9EA7C /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -195,6 +224,7 @@
 				542CF0CF2FEB028C0051FA02 /* FirebaseRemoteConfig */,
 				542CF0D12FEB028C0051FA02 /* FirebaseStorage */,
 				542CF0D32FEB028C0051FA02 /* FirebaseStorageCombine-Community */,
+				547CD9EF2FEF3BC6001E616B /* Lottie */,
 			);
 			productName = MathMastery;
 			productReference = 542CF0742FEAF58D0051FA02 /* MathMastery.app */;
@@ -280,6 +310,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				542CF0A32FEAFE4A0051FA02 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				547CD9EE2FEF3BB5001E616B /* XCRemoteSwiftPackageReference "lottie-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 542CF0752FEAF58D0051FA02 /* Products */;
@@ -481,11 +512,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = MathMastery/MathMastery.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3Q2UV4GA7P;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MathMastery/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -513,11 +547,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = MathMastery/MathMastery.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3Q2UV4GA7P;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MathMastery/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -674,6 +711,14 @@
 				minimumVersion = 12.15.0;
 			};
 		};
+		547CD9EE2FEF3BB5001E616B /* XCRemoteSwiftPackageReference "lottie-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.6.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -796,6 +841,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 542CF0A32FEAFE4A0051FA02 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = "FirebaseStorageCombine-Community";
+		};
+		547CD9EF2FEF3BC6001E616B /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 547CD9EE2FEF3BB5001E616B /* XCRemoteSwiftPackageReference "lottie-ios" */;
+			productName = Lottie;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,0 +1,22 @@
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+
+# Derived data
+DerivedData/
+
+# Build products
+build/
+
+# Swift Package Manager
+.build/
+
+# MacOS
+.DS_Store
+
+# Firebase
+GoogleService-Info.plist
+
+# Signing certificates / provisioning
+*.p12
+*.mobileprovision

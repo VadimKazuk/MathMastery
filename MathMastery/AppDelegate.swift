@@ -10,13 +10,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]?
     ) -> Bool {
-        FirebaseApp.configure()
+//        FirebaseApp.configure()
 
-        return true
+          return true
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        Messaging.messaging().apnsToken = deviceToken
+//        Messaging.messaging().apnsToken = deviceToken
     }
 
     @MainActor
@@ -25,8 +25,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             didReceiveRemoteNotification userInfo: [AnyHashable : Any]
         ) async -> UIBackgroundFetchResult {
 
-            // Здесь можно безопасно работать с вашим storageService или serviceContainer,
-            // так как они тоже находятся на Main Actor
 
             return .newData
         }

@@ -4,43 +4,156 @@ import SwiftUI
 extension LearnView {
     final class ViewModel: ObservableObject {
 
+        static let gridCoordinateSpaceName = "GRID"
+
+        // MARK: - Dependencies
+        private let swiftDB: SwiftDataService
         private let serviceContainer: ServiceContainer
-        private var cancellables = Set<AnyCancellable>()
+        private let accountService: AccountService
 
-        let numbers = Array(1...9)
+        // MARK: - Engine
+        private let engine = LearnEngine()
+        private var state: LearnEngine.State = .init(
+            answersIndex: [:],
+            gridState: []
+        )
 
-        @Published var selectedRow: Int?
-        @Published var selectedColumn: Int?
+        // MARK: - Data
+        @Published private(set) var sessions: [PracticeSession] = []
+        @Published private(set) var grid = MultiplicationGridState(
+            numbers: Array(2...9),
+            cells: []
+        )
 
+        // MARK: - UI State
+        @Published var mode: LearnMode = .explore
+
+        @Published var isFocusPanelVisible: Bool = true
+
+        // MARK: - Init
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
+            self.accountService = serviceContainer.resolve(AccountService.self)
+            self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
+
+            loadSessions()
         }
 
-        var selectedText: String {
-            guard let row = selectedRow,
-                  let column = selectedColumn else {
+        // MARK: - Derived
+        var avatarName: String {
+            "img_profile_\(accountService.profile.avatarId)"
+        }
+
+        var isFocusMode: Bool {
+            mode == .focus
+        }
+
+        // MARK: - Equation UI
+        func equationTitle(
+            selection: GridSelectionController
+        ) -> String {
+
+            guard
+                let row = selection.selectedRow,
+                let col = selection.selectedColumn
+            else {
                 return "Select a cell"
             }
 
-            return "\(row) × \(column) = \(row * column)"
+            return "\(row) × \(col) = \(row * col)"
         }
 
-        func selectCell(row: Int, column: Int) {
-            selectedRow = row
-            selectedColumn = column
+        func equationAccuracyText(
+            selection: GridSelectionController
+        ) -> String {
+
+            guard
+                let row = selection.selectedRow,
+                let col = selection.selectedColumn
+            else {
+                return "ACTIVE LEARNING"
+            }
+
+            let stats = stats(for: row, col)
+
+            guard stats.total > 0 else {
+                return "ACTIVE LEARNING"
+            }
+
+            let percent = Int(
+                (Double(stats.correct) / Double(stats.total) * 100).rounded()
+            )
+
+            return "\(percent)% ACCURACY"
         }
 
-        func isSelected(row: Int, column: Int) -> Bool {
-            selectedRow == row && selectedColumn == column
+        func currentEquationLevel(
+            selection: GridSelectionController
+        ) -> MistakeLevel {
+
+            guard
+                let row = selection.selectedRow,
+                let col = selection.selectedColumn
+            else {
+                return .none
+            }
+
+            let s = stats(for: row, col)
+
+            return CellEngine.level(
+                correct: s.correct,
+                total: s.total
+            )
         }
 
-        func value(row: Int, column: Int) -> Int {
-            row * column
+        // MARK: - Load
+        func loadSessions() {
+            sessions = swiftDB.fetchSessions()
+            rebuildState()
         }
+
+        private func rebuildState() {
+            state = engine.makeState(from: sessions)
+            grid = MultiplicationGridState(
+                numbers: Array(2...9),
+                cells: state.gridState
+            )
+        }
+
+        // MARK: - Stats
+        private func stats(for row: Int, _ col: Int, limit: Int = 5) -> (correct: Int, total: Int) {
+
+            let key = SelectedCell(row: min(row, col),
+                                   column: max(row, col))
+
+            guard let answers = state.answersIndex[key] else {
+                return (0, 0)
+            }
+
+            let slice = answers.prefix(limit)
+
+            return (
+                correct: slice.filter { $0.isCorrect }.count,
+                total: slice.count
+            )
+        }
+
+        // MARK: - Mode
+        func selectMode(_ mode: LearnMode) {
+            self.mode = mode
+
+            if mode == .focus {
+                isFocusPanelVisible = false
+            }
+
+            if mode == .explore {
+                isFocusPanelVisible = true
+            }
+        }
+
+        func toggleFocusPanel() {
+            isFocusPanelVisible.toggle()
+        }
+
     }
-}
-
-struct SelectedCell {
-    let row: Int
-    let column: Int
 }

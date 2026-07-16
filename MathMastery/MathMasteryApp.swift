@@ -1,10 +1,3 @@
-//
-//  MathMasteryApp.swift
-//  MathMastery
-//
-//  Created by Vadim Kazuk on 23/06/2026.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -15,12 +8,21 @@ struct MathMasteryApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainContainerView(viewModel: .init(serviceContainer: serviceContainer))
-                .accentColor(.orange)
-                .environmentObject(serviceContainer)
-                .onAppear {
-                    self.delegate.serviceContainer = serviceContainer
-                }
+            MainContainerView(
+                viewModel: MainContainerView.ViewModel(
+                    serviceContainer: serviceContainer
+                )
+            )
+            .environmentObject(serviceContainer)
+            .onAppear {
+                self.delegate.serviceContainer = serviceContainer
+
+                serviceContainer
+                    .resolve(GameCenterServiceProtocol.self)
+                    .authenticate()
+            }
+            .preferredColorScheme(.light)
         }
     }
 }
+

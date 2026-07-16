@@ -82,7 +82,7 @@ enum PracticeMode: String, CaseIterable, Identifiable, Hashable {
         case .focus:
             return Color.blue
         case .speed:
-            return Color(red: 0.84, green: 0.56, blue: 0.00) // Amber
+            return Color.yellow
         case .survival:
             return Color(red: 0.82, green: 0.15, blue: 0.17) // Red
         case .rush:
@@ -281,7 +281,7 @@ enum MistakeLevel {
     var baseColor: Color {
         switch self {
         case .none:
-            return .gray
+            return .clear
         case .perfect:
             return Color.green
         case .medium:
@@ -290,6 +290,21 @@ enum MistakeLevel {
             return Color(red: 0.95, green: 0.55, blue: 0.18) // .orange
         case .hard:
             return Color(red: 0.90, green: 0.25, blue: 0.25) // .red
+        }
+    }
+
+    var baseColor2: Color {
+        switch self {
+        case .none:
+            return .clear
+        case .perfect:
+            return Color.colorGreenPerfect
+        case .medium:
+            return Color.colorGreenGood
+        case .high:
+            return Color.colorOrangeHigh
+        case .hard:
+            return Color.colorOrangeHard
         }
     }
 

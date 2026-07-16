@@ -1,9 +1,22 @@
 import SwiftUI
 
 struct MultiplicationGridView: View {
-    @ObservedObject var viewModel: LearnView.ViewModel
+
+    let grid: MultiplicationGridState
+    let configuration: GridConfiguration
+
+    @ObservedObject var selection: GridSelectionController
+    @ObservedObject var interaction: GridInteractionController
 
     private let spacing: CGFloat = 6
+
+    private var style: GridStyleProvider {
+        GridStyleProvider(
+            configuration: configuration,
+            selection: selection,
+            grid: grid
+        )
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -20,13 +33,13 @@ struct MultiplicationGridView: View {
             multiplicationRows(cellSize: cellSize)
         }
             .frame(width: width)
-            .coordinateSpace(name: LearnView.ViewModel.gridCoordinateSpaceName)
+            .coordinateSpace(name: GridConstants.coordinateSpaceName)
             .contentShape(Rectangle())
 
-        if viewModel.isFocusMode {
+        if configuration.interactive {
             content.gesture(
                 dragGesture(cellSize: cellSize),
-                isEnabled: viewModel.isFocusMode
+                isEnabled: configuration.interactive
             )
         } else {
             content
@@ -34,7 +47,7 @@ struct MultiplicationGridView: View {
     }
 
     private func cellSize(for width: CGFloat) -> CGFloat {
-        let columns = CGFloat(viewModel.numbers.count + 1)
+        let columns = CGFloat(grid.numbers.count + 1)
         let totalSpacing = spacing * (columns - 1)
 
         return max((width - totalSpacing) / columns, 1)
@@ -44,58 +57,74 @@ struct MultiplicationGridView: View {
         HStack(spacing: spacing) {
             HeaderCell(
                 text: "×",
-                color: viewModel.headerColor(rowIndex: nil, columnIndex: nil),
-                textColor: viewModel.headerTextColor(rowIndex: nil, columnIndex: nil),
-                borderColor: viewModel.headerBorderColor(rowIndex: nil, columnIndex: nil),
+                color: style.headerColor(rowIndex: nil, columnIndex: nil),
+                textColor: style.headerTextColor(rowIndex: nil, columnIndex: nil),
+                borderColor: style.headerBorderColor(rowIndex: nil, columnIndex: nil),
                 cellSize: cellSize
             )
             .onTapGesture {
-                guard viewModel.isFocusMode else { return }
-                viewModel.clearSelection()
+                guard configuration.interactive else { return }
+                selection.clear()
             }
 
-            ForEach(viewModel.numbers.indices, id: \.self) { columnIndex in
+            ForEach(grid.numbers.indices, id: \.self) { columnIndex in
                 HeaderCell(
-                    text: "\(viewModel.numbers[columnIndex])",
-                    color: viewModel.headerColor(rowIndex: nil, columnIndex: columnIndex),
-                    textColor: viewModel.headerTextColor(rowIndex: nil, columnIndex: columnIndex),
-                    borderColor: viewModel.headerBorderColor(rowIndex: nil, columnIndex: columnIndex),
+                    text: "\(grid.numbers[columnIndex])",
+                    color: style.headerColor(rowIndex: nil, columnIndex: columnIndex),
+                    textColor: style.headerTextColor(rowIndex: nil, columnIndex: columnIndex),
+                    borderColor: style.headerBorderColor(rowIndex: nil, columnIndex: columnIndex),
                     cellSize: cellSize
                 )
                 .onTapGesture {
-                    guard viewModel.isFocusMode else { return }
-                    viewModel.selectColumn(viewModel.numbers[columnIndex])
+                    guard configuration.interactive else { return }
+                    selection.selectColumn(
+                        grid.numbers[columnIndex]
+                    )
                 }
             }
         }
     }
 
     private func multiplicationRows(cellSize: CGFloat) -> some View {
-        ForEach(viewModel.numbers.indices, id: \.self) { rowIndex in
+        ForEach(grid.numbers.indices, id: \.self) { rowIndex in
             HStack(spacing: spacing) {
                 HeaderCell(
-                    text: "\(viewModel.numbers[rowIndex])",
-                    color: viewModel.headerColor(rowIndex: rowIndex, columnIndex: nil),
-                    textColor: viewModel.headerTextColor(rowIndex: rowIndex, columnIndex: nil),
-                    borderColor: viewModel.headerBorderColor(rowIndex: rowIndex, columnIndex: nil),
+                    text: "\(grid.numbers[rowIndex])",
+                    color: style.headerColor(rowIndex: rowIndex, columnIndex: nil),
+                    textColor: style.headerTextColor(rowIndex: rowIndex, columnIndex: nil),
+                    borderColor: style.headerBorderColor(rowIndex: rowIndex, columnIndex: nil),
                     cellSize: cellSize
                 )
                 .onTapGesture {
-                    guard viewModel.isFocusMode else { return }
-                    viewModel.selectRow(viewModel.numbers[rowIndex])
+                    guard configuration.interactive else { return }
+
+                    selection.selectRow(
+                        grid.numbers[rowIndex]
+                    )
                 }
 
-                ForEach(viewModel.numbers.indices, id: \.self) { columnIndex in
-                    let cell = viewModel.gridState[rowIndex][columnIndex]
+                ForEach(grid.numbers.indices, id: \.self) { columnIndex in
 
                     MultiplicationCell(
-                        text: "\(cell.value)",
-                        color: viewModel.isFocusMode ? cell.level.opacityСolor : Color.gray.opacity(0.10),
-                        textColor: viewModel.cellTextColor(rowIndex: rowIndex, columnIndex: columnIndex),
-                        borderColor: viewModel.cellBorderColor(rowIndex: rowIndex, columnIndex: columnIndex),
+                        text: "\(grid.cell(row: rowIndex,column: columnIndex).value)",
+                        showsText: configuration.showsCellValues,
+                        color: configuration.showsCellColors
+                            ? grid.cell(
+                                row: rowIndex,
+                                column: columnIndex
+                            ).level.baseColor2
+                            : Color.clear,
+                        textColor: style.cellTextColor(
+                            rowIndex: rowIndex,
+                            columnIndex: columnIndex
+                        ),
+                        borderColor: style.cellBorderColor(
+                            rowIndex: rowIndex,
+                            columnIndex: columnIndex
+                        ),
                         cellSize: cellSize,
                         onCenterChange: { center in
-                            viewModel.updateCellCenter(
+                            interaction.updateCellCenter(
                                 center,
                                 rowIndex: rowIndex,
                                 columnIndex: columnIndex
@@ -103,8 +132,12 @@ struct MultiplicationGridView: View {
                         }
                     )
                     .onTapGesture {
-                        guard viewModel.isFocusMode else { return }
-                        viewModel.selectCell(rowIndex: rowIndex, columnIndex: columnIndex)
+                        guard configuration.interactive else { return }
+
+                        selection.selectCell(
+                            rowIndex: rowIndex,
+                            columnIndex: columnIndex
+                        )
                     }
                 }
             }
@@ -122,20 +155,21 @@ struct MultiplicationGridView: View {
 
                 // верхние множители
                 if value.location.y < step {
-                    guard viewModel.numbers.indices.contains(column) else { return }
-                    viewModel.selectColumn(viewModel.numbers[column])
+                    guard grid.numbers.indices.contains(column) else { return }
+                    selection.selectColumn(grid.numbers[column])
                     return
                 }
 
-                // левые множители
                 if value.location.x < step {
-                    guard viewModel.numbers.indices.contains(row) else { return }
-                    viewModel.selectRow(viewModel.numbers[row])
+                    guard grid.numbers.indices.contains(row) else { return }
+                    selection.selectRow(grid.numbers[row])
                     return
                 }
 
-                // сама таблица
-                viewModel.updateSelection(at: value.location)
+                interaction.selectClosestCell(
+                    to: value.location,
+                    selection: selection
+                )
             }
     }
 }
@@ -165,6 +199,7 @@ struct HeaderCell: View {
 
 struct MultiplicationCell: View {
     let text: String
+    let showsText: Bool
     let color: Color
     let textColor: Color
     let borderColor: Color
@@ -174,7 +209,7 @@ struct MultiplicationCell: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 10)
 
-        Text(text)
+        Text(showsText ? text : "")
             .fontWeight(.semibold)
             .fontDesign(.rounded)
             .foregroundColor(textColor)
@@ -194,7 +229,7 @@ struct MultiplicationCell: View {
                 .onAppear {
                     updateCenter(from: geo)
                 }
-                .onChange(of: geo.frame(in: .named(LearnView.ViewModel.gridCoordinateSpaceName))) { _, _ in
+                .onChange(of: geo.frame(in: .named(GridConstants.coordinateSpaceName))) { _, _ in
                     updateCenter(from: geo)
                 }
         }
@@ -202,7 +237,7 @@ struct MultiplicationCell: View {
 
     private func updateCenter(from geo: GeometryProxy) {
         DispatchQueue.main.async {
-            let frame = geo.frame(in: .named(LearnView.ViewModel.gridCoordinateSpaceName))
+            let frame = geo.frame(in: .named(GridConstants.coordinateSpaceName))
             onCenterChange(CGPoint(x: frame.midX, y: frame.midY))
         }
     }

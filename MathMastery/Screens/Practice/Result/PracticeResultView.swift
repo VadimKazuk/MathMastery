@@ -40,6 +40,14 @@ struct PracticeResultView: View {
 
     private var hero: some View {
         VStack(spacing: 20) {
+            if viewModel.isPersonalBest {
+                HStack {
+                    Spacer()
+
+                    ShimmerTrophy(size: 20)
+                        .padding(.trailing, 30)
+                }
+             }
             // Круговой индикатор точности с иконкой режима прямо внутри него
             ZStack {
                 Circle()

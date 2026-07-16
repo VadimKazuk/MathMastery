@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import Combine
 
 struct HomeView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
@@ -13,43 +14,74 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    currentTargetCard
+                    weeklyMilestoneCard
                     dailyChallengeCard
-                    quickStartSection
-                    activitySection
+                    currentTargetCard
                 }
+                .background(ScrollViewConfigurator())
                 .padding(.horizontal, 16)
                 .padding(.top, 22)
                 .padding(.bottom, 24)
                 .frame(maxWidth: .infinity)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-//            .toolbar {
-//                ToolbarItem(placement: .topBarLeading) {
-//                    Text("MathMastery")
-//                        .font(.system(size: 28, weight: .bold, design: .rounded))
-//                        .foregroundColor(AppColor.commonAccentBlue)
-//                        .fixedSize()
-//                }
-//                .sharedBackgroundVisibility(.hidden)
-//
-//                ToolbarItem(placement: .navigationBarTrailing) {
-//                    Button {
-//                        print("Profile tapped")
-//                    } label: {
-//                        Image(viewModel.avatarName)
-//                            .resizable()
-//                            .scaledToFill()
-//                            .frame(width: 35, height: 35)
-//                            .clipShape(Circle())
-//                    }
-//                }
-//            }
-//            .toolbarBackground(Color.white, for: .navigationBar)
         }
     }
 
     // MARK: - Subviews
+
+    private var weeklyMilestoneCard: some View {
+        VStack(alignment: .leading, spacing: 20) {
+
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Weekly Milestone")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                    Text("Keep the momentum going!")
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                    VStack(alignment: .center, spacing: 0) {
+                        HStack {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 22))
+                                .foregroundColor(.orange)
+                            Text("\(viewModel.streakCount)")
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundColor(.orange)
+                        }
+                        Text("DAY STREAK")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+
+            }
+
+            HStack {
+                ForEach(viewModel.days) { item in
+                    WeeklyDayView(
+                        day: item.day,
+                        status: item.status
+                    )
+                }
+            }
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
+
+            CommonButton(
+                title: "Complete Today's Goal",
+                action: viewModel.resumeSession
+            )
+
+        }
+        .padding(20)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(24)
+        .shadow(color: Color.black.opacity(0.02), radius: 10, x: 0, y: 5)
+    }
 
     private var currentTargetCard: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -92,20 +124,10 @@ struct HomeView: View {
                 .frame(height: 8)
             }
             .padding(.vertical, 4)
-
-            Button(action: viewModel.resumeSession) {
-                HStack {
-                    Spacer()
-                    Image(systemName: "play.fill")
-                    Text("Resume Session")
-                    Spacer()
-                }
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
-                .padding()
-                .background(AppColor.commonAccentBlue)
-                .cornerRadius(12)
-            }
+            CommonButton(
+                title: "Resume Session",
+                action: viewModel.resumeSession
+            )
         }
         .padding(20)
         .background(Color(.secondarySystemGroupedBackground))
@@ -170,83 +192,95 @@ struct HomeView: View {
             }
         }
     }
+}
 
-    private var activitySection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Activity")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+// MARK: - Supporting Components
 
-            VStack(alignment: .leading, spacing: 16) {
+enum DayStatus {
+    case completed, current, locked, reward
+}
 
-                HStack {
-                    Spacer()
-                    Text("LAST 7 DAYS")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .tracking(0.5)
-                }
+struct WeeklyDay: Identifiable {
+    let id = UUID()
+    let day: String
+    let status: DayStatus
+}
 
-                Chart(viewModel.weeklyActivity) { item in
-                    BarMark(
-                        x: .value("Day", item.date),
-                        y: .value("Solved", item.value),
-                        width: .fixed(12)
-                    )
-                    .foregroundStyle(
-                        item.isCurrent
-                            ? AppColor.commonAccentBlue
-                            : Color(.systemGray5)
-                    )
-                }
-                .chartXAxis {
-                    AxisMarks(values: viewModel.weeklyActivity.map(\.date)) { value in
-                        AxisValueLabel {
-                            if let date = value.as(Date.self) {
-                                Text(date.formatted(.dateTime.weekday(.narrow)))
-                            }
-                        }
-                    }
-                }
-                .chartYAxis(.hidden)
-                .frame(height: 140)
-                .padding(.vertical, 8)
+struct WeeklyDayView: View {
+    let day: String
+    let status: DayStatus
 
-                Divider()
-                    .background(Color(.systemGray6))
+    var body: some View {
+        VStack(spacing: 10) {
+            Text(day)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(textColor)
 
-                HStack(alignment: .center) {
-                    statItem(value: viewModel.solvedCount, label: "SOLVED")
-                    Spacer()
-                    statItem(value: viewModel.avgAccuracy, label: "AVG ACC")
-                    Spacer()
-                    statItem(value: viewModel.timePerDay, label: "TIME/DAY")
-                }
-                .padding(.top, 4)
+            ZStack {
+                Circle()
+                    .fill(circleBgColor)
+                    .frame(width: 34, height: 34)
+
+                Image(systemName: iconName)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(iconColor)
             }
-            .padding(20)
-            .background(Color(.secondarySystemGroupedBackground))
-            .cornerRadius(24)
-            .shadow(color: Color.black.opacity(0.02), radius: 10, x: 0, y: 5)
+        }
+        .frame(width: 40)
+        .padding(.vertical, 8)
+        .background(pillBgColor)
+        .clipShape(Capsule())
+        .shadow(color: status == .current ? AppColor.commonAccentBlue.opacity(0.25) : .clear, radius: 8, x: 0, y: 4)
+    }
+
+    private var textColor: Color {
+        switch status {
+        case .completed: return .green
+        case .current: return AppColor.commonAccentBlue
+        case .locked, .reward: return .secondary
         }
     }
 
-    private func statItem(value: String, label: String) -> some View {
-        VStack(spacing: 6) {
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-            Text(label)
-                .font(.system(size: 10, weight: .heavy))
-                .foregroundColor(.secondary)
-                .tracking(0.5)
+    private var pillBgColor: Color {
+        switch status {
+        case .completed: return Color.green.opacity(0.06)
+        case .current: return AppColor.commonAccentBlue
+        case .locked, .reward: return Color(.systemGray6).opacity(0.5)
         }
-        .frame(maxWidth: .infinity)
+    }
+
+    private var pillBorderColor: Color {
+        switch status {
+        case .completed: return Color.green.opacity(0.15)
+        default: return Color(.systemGray4).opacity(0.3)
+        }
+    }
+
+    private var circleBgColor: Color {
+        switch status {
+        case .completed: return .green
+        case .current: return .white
+        case .locked, .reward: return Color(.systemGray5)
+        }
+    }
+
+    private var iconColor: Color {
+        switch status {
+        case .completed: return .white
+        case .current: return AppColor.commonAccentBlue
+        case .locked, .reward: return .secondary
+        }
+    }
+
+    private var iconName: String {
+        switch status {
+        case .completed: return "checkmark"
+        case .current: return "star.fill"
+        case .locked: return "lock.fill"
+        case .reward: return "trophy.fill"
+        }
     }
 }
-
-#Preview {
-    HomeView(viewModel: .init(serviceContainer: PreviewServiceContainer()))
-}
-
 
 struct QuickStartButton: View {
     let title: String
@@ -263,15 +297,6 @@ struct QuickStartButton: View {
                     .font(.system(size: 20))
                     .foregroundColor(color)
                     .frame(width: 40, height: 40)
-                    .symbolEffect(.variableColor.iterative.reversing, options: .repeating)
-                        .onAppear {
-                            withAnimation(
-                                .easeInOut(duration: 0.7)
-                                .repeatForever(autoreverses: true)
-                            ) {
-                                scale = 1.08
-                            }
-                        }
                     .background(isBordered ? Color.clear : color.opacity(0.1))
                     .clipShape(Circle())
 
@@ -292,6 +317,31 @@ struct QuickStartButton: View {
     }
 }
 
-#Preview {
-    HomeView(viewModel: .init(serviceContainer: PreviewServiceContainer()))
+struct BounceOnTap: ViewModifier {
+    @State private var scale: CGFloat = 1
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(scale)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        guard scale == 1 else { return }
+                        withAnimation(.easeOut(duration: 0.08)) {
+                            scale = 0.94
+                        }
+                    }
+                    .onEnded { _ in
+                        withAnimation(.spring(response: 0.22, dampingFraction: 0.45)) {
+                            scale = 1.05
+                        }
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.75)) {
+                                scale = 1
+                            }
+                        }
+                    }
+            )
+    }
 }

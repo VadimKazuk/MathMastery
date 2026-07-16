@@ -67,3 +67,11 @@ enum XPSystem {
         return xp
     }
 }
+
+extension XPSystem {
+    static func total(sessions: [PracticeSession]) -> Int {
+        sessions.reduce(0) {
+            $0 + xp(for: $1)
+        }
+    }
+}

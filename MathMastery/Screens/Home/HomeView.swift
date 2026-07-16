@@ -18,6 +18,7 @@ struct HomeView: View {
                     dailyChallengeCard
                     currentTargetCard
                 }
+                .background(ScrollViewConfigurator())
                 .padding(.horizontal, 16)
                 .padding(.top, 22)
                 .padding(.bottom, 24)
@@ -70,18 +71,11 @@ struct HomeView: View {
             .padding(.horizontal, 8)
             .frame(maxWidth: .infinity)
 
-            Button(action: viewModel.resumeSession) {
-                HStack(spacing: 8) {
-                    Spacer()
-                    Text("Complete Today's Goal")
-                    Spacer()
-                }
-                .font(.system(size: 18, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.vertical, 16)
-                .background(AppColor.commonAccentBlue)
-                .cornerRadius(24)
-            }
+            CommonButton(
+                title: "Complete Today's Goal",
+                action: viewModel.resumeSession
+            )
+
         }
         .padding(20)
         .background(Color(.secondarySystemGroupedBackground))
@@ -130,20 +124,10 @@ struct HomeView: View {
                 .frame(height: 8)
             }
             .padding(.vertical, 4)
-
-            Button(action: viewModel.resumeSession) {
-                HStack {
-                    Spacer()
-                    Image(systemName: "play.fill")
-                    Text("Resume Session")
-                    Spacer()
-                }
-                .font(.system(size: 18, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.vertical, 16)
-                .background(AppColor.commonAccentBlue)
-                .cornerRadius(24)
-            }
+            CommonButton(
+                title: "Resume Session",
+                action: viewModel.resumeSession
+            )
         }
         .padding(20)
         .background(Color(.secondarySystemGroupedBackground))
@@ -333,3 +317,31 @@ struct QuickStartButton: View {
     }
 }
 
+struct BounceOnTap: ViewModifier {
+    @State private var scale: CGFloat = 1
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(scale)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        guard scale == 1 else { return }
+                        withAnimation(.easeOut(duration: 0.08)) {
+                            scale = 0.94
+                        }
+                    }
+                    .onEnded { _ in
+                        withAnimation(.spring(response: 0.22, dampingFraction: 0.45)) {
+                            scale = 1.05
+                        }
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.75)) {
+                                scale = 1
+                            }
+                        }
+                    }
+            )
+    }
+}

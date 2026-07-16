@@ -82,7 +82,7 @@ enum PracticeMode: String, CaseIterable, Identifiable, Hashable {
         case .focus:
             return Color.blue
         case .speed:
-            return Color(red: 0.84, green: 0.56, blue: 0.00) // Amber
+            return Color.yellow
         case .survival:
             return Color(red: 0.82, green: 0.15, blue: 0.17) // Red
         case .rush:
@@ -300,7 +300,7 @@ enum MistakeLevel {
         case .perfect:
             return Color.colorGreenPerfect
         case .medium:
-            return Color.colorOrangeMedium
+            return Color.colorGreenGood
         case .high:
             return Color.colorOrangeHigh
         case .hard:

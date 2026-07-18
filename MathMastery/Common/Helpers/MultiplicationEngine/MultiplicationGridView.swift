@@ -113,7 +113,7 @@ struct MultiplicationGridView: View {
                                 row: rowIndex,
                                 column: columnIndex
                             ).level.baseColor2
-                            : Color.clear,
+                            : Color(.systemGray6),
                         textColor: style.cellTextColor(
                             rowIndex: rowIndex,
                             columnIndex: columnIndex
@@ -225,7 +225,7 @@ struct MultiplicationCell: View {
 
     private var centerReader: some View {
         GeometryReader { geo in
-            Color.clear
+            Color(.systemGray6)
                 .onAppear {
                     updateCenter(from: geo)
                 }

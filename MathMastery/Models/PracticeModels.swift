@@ -59,6 +59,32 @@ enum PracticeMode: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
+    var icImage: String {
+        switch self {
+        case .focus:
+            return "ic_target_blue"
+        case .speed:
+            return "ic_bolt_yellow"
+        case .survival:
+            return "ic_heart_red"
+        case .rush:
+            return "ic_flame_orange"
+        }
+    }
+
+    var icImageSized: String {
+        switch self {
+        case .focus:
+            return "ic_target_blue_sized"
+        case .speed:
+            return "ic_bolt_yellow_sized"
+        case .survival:
+            return "ic_heart_red_sized"
+        case .rush:
+            return "ic_flame_orange_sized"
+        }
+    }
+
     var skillIcon: String {
         switch self {
         case .focus: return "checkmark.seal.fill"

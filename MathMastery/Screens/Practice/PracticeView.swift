@@ -60,8 +60,10 @@ private extension PracticeView {
                 }
 
                 HStack(spacing: 4) {
-                    Image(systemName: mode.systemImage)
-                        .font(.system(size: 11, weight: .bold))
+                    Image(mode.icImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
 
                     Text("Skill: \(mode.trainingFocus)")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -85,10 +87,13 @@ private extension PracticeView {
                     viewModel.selectMode(mode)
                     viewModel.startSelectedMode()
                 }) {
-                    Image(systemName: "play.circle")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 60, height: 42)
+                    HStack {
+                        Image("ic_play")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                    }
+                    .frame(width: 60, height: 42)
                 }
                 .buttonStyle(DeptButtonStyle())
             }
@@ -121,8 +126,7 @@ private extension PracticeView {
                     viewModel.path.append(.focusPractice(table: table))
                 }
             }
-            .toolbar(.hidden, for: .tabBar)
-
+            .hidesCustomTabBar()
 
         case .focusPractice(let table):
             FocusPracticeView(
@@ -133,32 +137,28 @@ private extension PracticeView {
                 ),
                 onComplete: { viewModel.showResult($0) }
             )
-            .toolbar(.hidden, for: .tabBar)
-
+            .hidesCustomTabBar()
 
         case .speed:
             SpeedPracticeView(
                 viewModel: .init(serviceContainer: serviceContainer),
                 onComplete: { viewModel.showResult($0) }
             )
-            .toolbar(.hidden, for: .tabBar)
-
+            .hidesCustomTabBar()
 
         case .survival:
             SurvivalPracticeView(
                 viewModel: .init(serviceContainer: serviceContainer),
                 onComplete: { viewModel.showResult($0) }
             )
-            .toolbar(.hidden, for: .tabBar)
-
+            .hidesCustomTabBar()
 
         case .rush:
             RushPracticeView(
                 viewModel: .init(serviceContainer: serviceContainer),
                 onComplete: { viewModel.showResult($0) }
             )
-            .toolbar(.hidden, for: .tabBar)
-
+            .hidesCustomTabBar()
 
         case .result(let session):
             PracticeResultView(
@@ -185,7 +185,7 @@ private extension PracticeView {
                     viewModel.returnToHub()
                 }
             )
-            .toolbar(.hidden, for: .tabBar)
+            .hidesCustomTabBar()
         }
     }
 

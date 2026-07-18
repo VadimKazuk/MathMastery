@@ -39,7 +39,7 @@ struct PracticeModeScreen<Trailing: View, Content: View>: View {
         }
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .hidesCustomTabBar()
         .overlay {
             if needExitModal {
                 exitOverlay

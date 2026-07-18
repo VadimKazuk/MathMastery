@@ -74,21 +74,12 @@ struct HistoryRow: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .stroke(session.mode.accentColor.opacity(0.1), lineWidth: 4)
-
-                Circle()
-                    .trim(from: 0, to: CGFloat(session.accuracy) / 100.0)
-                    .stroke(
-                        session.mode.accentColor,
-                        style: StrokeStyle(
-                            lineWidth: 4,
-                            lineCap: .round
-                        )
-                    )
-                    .rotationEffect(.degrees(-90))
-
+            ProgressRing(
+                progress: CGFloat(session.accuracy) / 100,
+                color: session.mode.accentColor,
+                lineWidth: 4,
+                animated: true
+            ) {
                 Text("\(session.accuracy)%")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundColor(session.mode.accentColor)
@@ -97,9 +88,10 @@ struct HistoryRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Image(systemName: session.mode.systemImage)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(session.mode.accentColor)
+                    Image(session.mode.icImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
 
                     Text(headerText)
                         .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -144,10 +136,13 @@ struct HistoryRow: View {
             Button {
                 onTap?(session)
             } label: {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 42, height: 32)
+                HStack {
+                    Image("ic_tap_finger_white")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                }
+                .frame(width: 42, height: 32)
             }
             .buttonStyle(DeptButtonStyle())
         }

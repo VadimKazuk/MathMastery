@@ -25,6 +25,10 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Color(uiColor: .systemGroupedBackground))
+            .onAppear {
+                viewModel.loadWeeklyMilestone()
+                viewModel.loadStreak()
+            }
         }
     }
 
@@ -37,6 +41,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Weekly Milestone")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
+
                     Text("Keep the momentum going!")
                         .font(.system(size: 15))
                         .foregroundColor(.secondary)
@@ -44,20 +49,22 @@ struct HomeView: View {
 
                 Spacer()
 
-                    VStack(alignment: .center, spacing: 0) {
-                        HStack {
-                            Image(systemName: "flame.fill")
-                                .font(.system(size: 22))
-                                .foregroundColor(.orange)
-                            Text("\(viewModel.streakCount)")
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                                .foregroundColor(.orange)
-                        }
-                        Text("DAY STREAK")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.secondary)
+                VStack(alignment: .trailing, spacing: 0) {
+                    HStack(spacing: 4) {
+                        Image(viewModel.streakLevel.imageName)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 28, height: 28)
+
+                        Text("\(viewModel.streakCount)")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundColor(viewModel.streakLevel.color)
                     }
 
+                    Text("DAY STREAK")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.secondary)
+                }
             }
 
             HStack {
@@ -71,11 +78,12 @@ struct HomeView: View {
             .padding(.horizontal, 8)
             .frame(maxWidth: .infinity)
 
-            CommonButton(
-                title: "Complete Today's Goal",
-                action: viewModel.resumeSession
-            )
-
+            if !viewModel.hasCompletedToday {
+                CommonButton(
+                    title: "Complete Today's Goal",
+                    action: viewModel.resumeSession
+                )
+            }
         }
         .padding(20)
         .background(Color(.secondarySystemGroupedBackground))
@@ -147,13 +155,11 @@ struct HomeView: View {
             }
 
             HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .stroke(Color.green.opacity(0.1), lineWidth: 4)
-                    Circle()
-                        .trim(from: 0, to: 12/20)
-                        .stroke(Color.green, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
+                ProgressRing(
+                    progress: 12.0 / 20.0,
+                    color: .green,
+                    lineWidth: 4
+                ) {
                     Text("12")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(.green)
@@ -194,17 +200,6 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Supporting Components
-
-enum DayStatus {
-    case completed, current, locked, reward
-}
-
-struct WeeklyDay: Identifiable {
-    let id = UUID()
-    let day: String
-    let status: DayStatus
-}
 
 struct WeeklyDayView: View {
     let day: String
@@ -217,68 +212,54 @@ struct WeeklyDayView: View {
                 .foregroundColor(textColor)
 
             ZStack {
-                Circle()
-                    .fill(circleBgColor)
-                    .frame(width: 34, height: 34)
-
-                Image(systemName: iconName)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(iconColor)
+                Image(iconName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: iconSize, height: iconSize)
             }
         }
         .frame(width: 40)
         .padding(.vertical, 8)
         .background(pillBgColor)
         .clipShape(Capsule())
-        .shadow(color: status == .current ? AppColor.commonAccentBlue.opacity(0.25) : .clear, radius: 8, x: 0, y: 4)
+    }
+
+    private var iconSize: CGFloat {
+        switch status {
+        case .locked, .reward:
+            return 22
+        default:
+            return 22
+        }
+    }
+
+    private var iconTint: Color {
+        switch status {
+        case .locked, .reward:
+            return .gray
+        default:
+            return .primary
+        }
     }
 
     private var textColor: Color {
-        switch status {
-        case .completed: return .green
-        case .current: return AppColor.commonAccentBlue
-        case .locked, .reward: return .secondary
-        }
+        status.textColor
     }
 
     private var pillBgColor: Color {
-        switch status {
-        case .completed: return Color.green.opacity(0.06)
-        case .current: return AppColor.commonAccentBlue
-        case .locked, .reward: return Color(.systemGray6).opacity(0.5)
-        }
+        status.pillBackground
     }
 
     private var pillBorderColor: Color {
-        switch status {
-        case .completed: return Color.green.opacity(0.15)
-        default: return Color(.systemGray4).opacity(0.3)
-        }
-    }
-
-    private var circleBgColor: Color {
-        switch status {
-        case .completed: return .green
-        case .current: return .white
-        case .locked, .reward: return Color(.systemGray5)
-        }
-    }
-
-    private var iconColor: Color {
-        switch status {
-        case .completed: return .white
-        case .current: return AppColor.commonAccentBlue
-        case .locked, .reward: return .secondary
-        }
+        status.pillBorder
     }
 
     private var iconName: String {
-        switch status {
-        case .completed: return "checkmark"
-        case .current: return "star.fill"
-        case .locked: return "lock.fill"
-        case .reward: return "trophy.fill"
-        }
+        status.iconName
+    }
+
+    private var iconColor: Color {
+        status.iconColor
     }
 }
 
@@ -317,31 +298,3 @@ struct QuickStartButton: View {
     }
 }
 
-struct BounceOnTap: ViewModifier {
-    @State private var scale: CGFloat = 1
-
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(scale)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in
-                        guard scale == 1 else { return }
-                        withAnimation(.easeOut(duration: 0.08)) {
-                            scale = 0.94
-                        }
-                    }
-                    .onEnded { _ in
-                        withAnimation(.spring(response: 0.22, dampingFraction: 0.45)) {
-                            scale = 1.05
-                        }
-
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            withAnimation(.spring(response: 0.2, dampingFraction: 0.75)) {
-                                scale = 1
-                            }
-                        }
-                    }
-            )
-    }
-}

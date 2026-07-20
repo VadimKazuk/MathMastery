@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct FocusPracticeView: View {
+    @Environment(\.dismiss) private var dismiss
+
     @StateObject var viewModel: ViewModel
     let onComplete: (PracticeSession) -> Void
 
@@ -12,19 +14,29 @@ struct FocusPracticeView: View {
     var body: some View {
         PracticeModeScreen(
             title: "Focus Mode",
-            trailing: progressBadge,
+            headerAction: .exitConfirm,
+            onBack: {
+                dismiss()
+            },
             onComplete: {
                 onComplete(viewModel.makeResult())
             }
         ) {
             VStack(spacing: 20) {
+                HStack {
+                    Spacer()
+                    progressBadge
+                }
+
                 VStack(alignment: .leading, spacing: 10) {
                     Text("\(Int(viewModel.progress * 100))% Complete")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(.secondary)
+
                     ProgressView(value: viewModel.progress)
                         .tint(AppColor.commonAccentBlue)
                         .animation(.easeInOut(duration: 0.35), value: viewModel.progress)
+
                     Text("MULTIPLICATION")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .tracking(1.2)

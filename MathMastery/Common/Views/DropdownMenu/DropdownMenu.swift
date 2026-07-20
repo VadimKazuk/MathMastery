@@ -64,7 +64,7 @@ private extension DropdownMenu {
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(
-            DeptButtonStyle(
+            DepthButtonStyle(
                 backgroundColor: .white,
                 cornerRadius: 6,
                 depth: 3,

@@ -51,7 +51,7 @@ struct CommonButton: View {
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(
-            DeptButtonStyle(
+            DepthButtonStyle(
                 backgroundColor: backgroundColor,
                 cornerRadius: cornerRadius,
                 depth: depth

@@ -21,6 +21,7 @@ extension FocusPracticeView {
         private(set) var questions: [PracticeQuestion] = []
 
         private let questionsAmount: Int = 5
+        private var isPaused = false
 
         init(
             serviceContainer: ServiceContainer,
@@ -95,22 +96,44 @@ extension FocusPracticeView {
             questions = generateQuestions()
         }
 
+        func pause() {
+            isPaused = true
+        }
+
+        func resume() {
+            isPaused = false
+        }
+
+        func restart() {
+            isPaused = false
+            reset()
+        }
+
         // MARK: - INPUT
 
         func appendDigit(_ digit: Int) {
-            guard !isAnswered, answerText.count < 3 else { return }
+            guard !isPaused,
+                  !isAnswered,
+                  answerText.count < 3
+            else { return }
             answerText.append("\(digit)")
         }
 
         func deleteDigit() {
-            guard !isAnswered, !answerText.isEmpty else { return }
+            guard !isPaused,
+                  !isAnswered,
+                  !answerText.isEmpty
+            else { return }
             answerText.removeLast()
         }
 
         // MARK: - ANSWER
 
         func submitAnswer() {
-            guard !isAnswered, let answer = Int(answerText) else { return }
+            guard !isPaused,
+                  !isAnswered,
+                  let answer = Int(answerText)
+            else { return }
 
             isAnswered = true
 

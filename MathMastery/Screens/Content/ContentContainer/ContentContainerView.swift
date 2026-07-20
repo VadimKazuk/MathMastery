@@ -12,7 +12,10 @@ struct ContentContainerView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             TabView(selection: $viewModel.contentViewType) {
-                HomeView(viewModel: .init(serviceContainer: serviceContainer))
+                HomeView(
+                    viewModel: .init(serviceContainer: serviceContainer),
+                    selectedTab: $viewModel.contentViewType
+                )
                     .toolbar(.hidden, for: .tabBar)
                     .tag(ContentViewType.home)
                 LearnView(viewModel: .init(serviceContainer: serviceContainer))

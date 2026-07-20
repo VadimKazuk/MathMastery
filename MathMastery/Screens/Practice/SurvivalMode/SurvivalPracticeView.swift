@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SurvivalPracticeView: View {
+    @Environment(\.dismiss) private var dismiss
+
     @StateObject var viewModel: ViewModel
     let onComplete: (PracticeSession) -> Void
 
@@ -12,12 +14,21 @@ struct SurvivalPracticeView: View {
     var body: some View {
         PracticeModeScreen(
             title: "Survival Mode",
-            trailing: livesBadge,
+            headerAction: .exitConfirm,
+
+            onBack: {
+                dismiss()
+            },
+
             onComplete: {
                 onComplete(viewModel.makeResult())
             }
         ) {
             VStack(spacing: 28) {
+                HStack {
+                    livesBadge
+                    Spacer()
+                }
                 VStack(spacing: 8) {
                     Text("\(viewModel.currentStreak) Streak")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
@@ -27,18 +38,15 @@ struct SurvivalPracticeView: View {
                         .font(.system(size: 14, weight: .regular, design: .rounded))
                         .foregroundColor(.secondary)
                 }
-                .padding(.top, 42)
-
                 questionCard
                 answerGrid
-
             }
         }
         .onAppear {
             viewModel.resetSession()
         }
-        .onChange(of: viewModel.isFinished) { _, finished in
-            if finished {
+        .onChange(of: viewModel.shouldShowResult) { _, show in
+            if show {
                 completeSession()
             }
         }

@@ -95,7 +95,7 @@ private extension PracticeView {
                     }
                     .frame(width: 60, height: 42)
                 }
-                .buttonStyle(DeptButtonStyle())
+                .buttonStyle(DepthButtonStyle())
             }
         }
         .padding(20)
@@ -167,21 +167,21 @@ private extension PracticeView {
                     session: session,
                     isPersonalBest: viewModel.isBest(session)
                 ),
-                retryAction: {
+//                retryAction: {
 
-                    if session.mode == .focus {
-                        viewModel.path = [
-                            .focusTableSelection
-                        ]
-                    } else {
-                        viewModel.retry(session.mode)
-                    }
+//                    if session.mode == .focus {
+//                        viewModel.path = [
+//                            .focusTableSelection
+//                        ]
+//                    } else {
+//                        viewModel.retry(session.mode)
+//                    }
 
-                },
+//                },
                 switchModeAction: {
                     viewModel.returnToHub()
                 },
-                hubAction: {
+                closeAction: {
                     viewModel.returnToHub()
                 }
             )

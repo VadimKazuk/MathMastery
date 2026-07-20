@@ -1,314 +1,245 @@
 import SwiftUI
-import Combine
 
-// MARK: - Enums for Settings Selection
-enum LearningRange: String, CaseIterable, Identifiable {
-    case x2_x5 = "x2-x5"
-    case x2_x10 = "x2-x10"
-    case custom = "Custom"
-    var id: String { self.rawValue }
-}
-
-enum CountdownDuration: Int, CaseIterable, Identifiable {
-    case three = 3
-    case five = 5
-    case ten = 10
-    var id: Int { self.rawValue }
-}
-
-enum AppTheme: String, CaseIterable, Identifiable {
-    case light = "Light"
-    case dark = "Dark"
-    case system = "System"
-    var id: String { self.rawValue }
-}
-
-enum AccentColor: String, CaseIterable, Identifiable {
-    case blue, green, brown, orange, purple, pink
-    var id: String { self.rawValue }
-
-    var color: Color {
-        switch self {
-        case .blue: return .blue
-        case .green: return .green
-        case .brown: return .brown
-        case .orange: return .orange
-        case .purple: return .purple
-        case .pink: return .pink
-        }
-    }
-}
-
-// MARK: - View Model Extension
-extension SettingsView {
-    final class ViewModel: ObservableObject {
-        private let serviceContainer: ServiceContainer
-        private var cancellables = Set<AnyCancellable>()
-
-        private let swiftDB: SwiftDataService
-
-        // Account
-        // (Handled via navigation actions)
-
-        // Learning
-        @Published var selectedRange: LearningRange = .x2_x5
-        @Published var rememberLastMode: Bool = false
-        @Published var showExplanations: Bool = false
-        @Published var highlightMistakes: Bool = false
-
-        // Practice
-        @Published var questionsPerSession: Int = 20
-        @Published var prePracticeCountdown: Bool = false
-        @Published var countdownDuration: CountdownDuration = .five
-        @Published var hapticFeedback: Bool = false
-        @Published var soundEffects: Bool = false
-
-        // Daily Goal
-        @Published var solvedQuestions: Int = 15
-        @Published var targetQuestions: Int = 25
-        @Published var goalMultiplier: Int = 25
-
-        // Appearance
-        @Published var selectedTheme: AppTheme = .light
-        @Published var selectedAccentColor: AccentColor = .blue
-        @Published var reduceAnimations: Bool = false
-
-        init(serviceContainer: ServiceContainer) {
-            self.serviceContainer = serviceContainer
-            swiftDB = serviceContainer.resolve(SwiftDataService.self)
-        }
-
-        func clearSessions() {
-            swiftDB.clearSessions()
-        }
-    }
-}
-
-// MARK: - Main Settings View
 struct SettingsView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
-
     @State private var showExitModal = false
+
+    @Environment(\.dismiss) private var dismiss
 
     init(viewModel: ViewModel) {
         self._viewModel = StateObject(wrappedValue: viewModel)
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                // MARK: - Account Section
-                Section(header: Text("ACCOUNT")) {
-                    NavigationLink {
-                        ProfilePictureSettingsView(
-                            viewModel: .init(serviceContainer: serviceContainer)
-                        )
-                    } label: {
-                        Text("Profile Picture")
-                    }
-                    NavigationLink {
-                        ProfileInfoSettingsView(
-                            viewModel: .init(serviceContainer: serviceContainer)
-                        )
-                    } label: {
-                        Text("Profile Information")
-                    }
-                   
+        VStack(spacing: 0) {
+
+            header
+
+            ScrollView {
+                VStack(spacing: 18) {
+                    learningSection
+                    practiceSection
+                    dailyGoalSection
+                    dataSection
+                    aboutSection
                 }
+                .background(ScrollViewConfigurator())
+                .padding()
+                .padding(.bottom, 30)
+            }
+        }
+        .background(Color(uiColor: .systemGroupedBackground))
+        .overlay {
+            exitOverlay
+                .animation(.easeInOut(duration: 0.2), value: showExitModal)
+        }
+    }
 
-                // MARK: - Learning Section
-                Section(header: Text("LEARNING")) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Default Range")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Picker("Default Range", selection: $viewModel.selectedRange) {
-                            ForEach(LearningRange.allCases) { range in
-                                Text(range.rawValue).tag(range)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+    private var header: some View {
+        HStack {
 
-                    Toggle("Remember last mode", isOn: $viewModel.rememberLastMode)
-                    Toggle("Show explanations", isOn: $viewModel.showExplanations)
-                    Toggle("Highlight mistakes", isOn: $viewModel.highlightMistakes)
-                }
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(.primary)
+                    .frame(width: 42, height: 42)
+                    .background(
+                        Circle()
+                            .fill(Color.white)
+                    )
+            }
+            .buttonStyle(.plain)
 
-                // MARK: - Practice Section
-                Section(header: Text("PRACTICE")) {
-                    NavigationLink(destination: Text("Questions Per Session Selection")) {
-                        HStack {
-                            Text("Questions per session")
-                            Spacer()
-                            Text("\(viewModel.questionsPerSession)")
-                                .foregroundColor(.secondary)
-                        }
-                    }
+            Spacer()
 
-                    Toggle("Pre-practice Countdown", isOn: $viewModel.prePracticeCountdown)
+            Text("Settings")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Countdown Duration")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Picker("Countdown Duration", selection: $viewModel.countdownDuration) {
-                            ForEach(CountdownDuration.allCases) { duration in
-                                Text("\(duration.rawValue)s").tag(duration)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            Spacer()
 
-                    Toggle("Haptic Feedback", isOn: $viewModel.hapticFeedback)
-                    Toggle("Sound Effects", isOn: $viewModel.soundEffects)
-                }
+            Color.clear
+                .frame(width: 42, height: 42)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+    }
 
-                // MARK: - Daily Goal Section
-                Section(header: Text("DAILY GOAL")) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Progress")
-                                .font(.subheadline)
-                                .bold()
-                            Spacer()
-                            Text("\(viewModel.solvedQuestions) / \(viewModel.targetQuestions) questions solved today")
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
-                        }
+    private var learningSection: some View {
+        SettingsCard(title: "Learning") {
+            VStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Difficulty")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
 
-                        ProgressView(value: Double(viewModel.solvedQuestions), total: Double(viewModel.targetQuestions))
-                            .tint(.green)
-                            .scaleEffect(x: 1, y: 2, anchor: .center) // Thickens the progress bar slightly to match UI
-                            .padding(.vertical, 4)
-
-                        Text("Goal Multiplier")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .padding(.top, 4)
-
-                        Picker("Goal Multiplier", selection: $viewModel.goalMultiplier) {
-                            ForEach([10, 25, 50, 100], id: \.self) { value in
-                                Text("\(value)").tag(value)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-                }
-
-                // MARK: - Appearance Section
-//                Section(header: Text("APPEARANCE")) {
-//                    VStack(alignment: .leading, spacing: 8) {
-//                        Text("Theme")
-//                            .font(.subheadline)
-//                            .foregroundColor(.secondary)
-//                        Picker("Theme", selection: $viewModel.selectedTheme) {
-//                            ForEach(AppTheme.allCases) { theme in
-//                                Text(theme.rawValue).tag(theme)
-//                            }
-//                        }
-//                        .pickerStyle(.segmented)
-//                    }
-//                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-//
-//                    VStack(alignment: .leading, spacing: 8) {
-//                        Text("Accent Color")
-//                            .font(.subheadline)
-//                            .foregroundColor(.secondary)
-//
-//                        HStack(spacing: 12) {
-//                            ForEach(AccentColor.allCases) { accent in
-//                                ZStack {
-//                                    Circle()
-//                                        .fill(accent.color)
-//                                        .frame(width: 32, height: 32)
-//                                        .onTapGesture {
-//                                            viewModel.selectedAccentColor = accent
-//                                        }
-//
-//                                    if viewModel.selectedAccentColor == accent {
-//                                        Circle()
-//                                            .stroke(Color.primary, lineWidth: 2)
-//                                            .frame(width: 38, height: 38)
-//                                    }
-//                                }
-//                            }
-//                        }
-//                        .padding(.vertical, 4)
-//                    }
-//                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-//
-//                    Toggle("Reduce Animations", isOn: $viewModel.reduceAnimations)
-//                }
-
-                // MARK: - Data & Privacy Section
-                Section(header: Text("DATA & PRIVACY")) {
-                    Button(action: { showExitModal = true }) {
-                        HStack {
-                            Text("Reset Practice History").foregroundColor(.red)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.footnote).foregroundColor(.secondary)
-                        }
-                    }
-                    Button(action: { /* Handle reset logic */ }) {
-                        HStack {
-                            Text("Reset Statistics").foregroundColor(.red)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.footnote).foregroundColor(.secondary)
-                        }
-                    }
-                    Button(action: { /* Handle default restoration */ }) {
-                        HStack {
-                            Text("Restore Defaults").foregroundColor(.blue)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.footnote).foregroundColor(.secondary)
-                        }
+                    DepthSegmentedPicker(
+                        items: LearningRange.allCases,
+                        selection: $viewModel.selectedRange
+                    ) {
+                        $0.rawValue
                     }
                 }
 
-                // MARK: - About Section
-                Section(header: Text("ABOUT")) {
-                    NavigationLink(destination: Text("About MathMastery")) {
-                        Text("About MathMastery")
-                    }
-                    HStack {
-                        Text("Version")
-                        Spacer()
-                        Text("1.2.0").foregroundColor(.secondary)
-                    }
-                    NavigationLink(destination: Text("Privacy Policy")) {
-                        Text("Privacy Policy")
-                    }
-                    NavigationLink(destination: Text("Terms of Service")) {
-                        Text("Terms of Service")
-                    }
-                    NavigationLink(destination: Text("Contact Support")) {
-                        Text("Contact Support")
-                    }
-                }
+                toggleRow(
+                    title: "Show correct answer",
+                    value: $viewModel.showCorrectAnswer,
+                    onImage: "ic_eye_on",
+                    offImage: "ic_eye_off"
+                )
+            }
+        }
+    }
 
-                // MARK: - Footer Footer
-                Section {
-                    HStack {
-                        Spacer()
-                        Text("Crafted with effort for Math Masters")
-                            .font(.caption)
-                            .italic()
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    }
-                    .listRowBackground(Color.clear)
+    private var practiceSection: some View {
+        SettingsCard(title: "Practice") {
+            VStack(spacing: 16) {
+                toggleRow(
+                    title: "Haptic Feedback",
+                    value: $viewModel.hapticFeedback,
+                    onImage: "ic_haptic_on",
+                    offImage: "ic_haptic_off"
+                )
+
+                toggleRow(
+                    title: "Sound Effects",
+                    value: $viewModel.soundEffects,
+                    onImage: "ic_sound_on",
+                    offImage: "ic_sound_off"
+                )
+
+                toggleRow(
+                    title: "Auto Start Practice",
+                    value: $viewModel.autoStartPractice,
+                    onImage: "ic_power_on",
+                    offImage: "ic_power_off"
+                )
+            }
+        }
+    }
+
+    private var dailyGoalSection: some View {
+        SettingsCard(title: "Daily Goal") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Questions per day")
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+
+                DepthSegmentedPicker(
+                    items: [10,20,30,50],
+                    selection: $viewModel.dailyGoal
+                ) {
+                    "\($0)"
                 }
             }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .overlay {
-                exitOverlay
+        }
+    }
+
+    private var dataSection: some View {
+        SettingsCard(title: "Data") {
+            VStack(spacing: 14) {
+                actionRow(
+                    title: "Reset Progress",
+                    icon: "ic_trash_bin",
+                    color: .red
+                ) {
+                    showExitModal = true
+                }
+
+                actionRow(
+                    title: "Restore Defaults",
+                    icon: "ic_arrow_rotate",
+                    color: AppColor.commonAccentBlue
+                ) {
+                    viewModel.restoreDefaults()
+                }
             }
+        }
+    }
+
+    private var aboutSection: some View {
+        SettingsCard(title: "About") {
+            VStack(alignment: .leading, spacing: 14) {
+                NavigationLink {
+                    Text("About MathMastery")
+                } label: {
+                    Text("About MathMastery")
+                }
+
+                NavigationLink {
+                    Text("Privacy Policy")
+                } label: {
+                    Text("Privacy Policy")
+                }
+
+                NavigationLink {
+                    Text("Contact Support")
+                } label: {
+                    Text("Contact Support")
+                }
+
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text("1.2.0")
+                        .foregroundColor(.secondary)
+                }
+            }
+            .font(.system(size: 16, weight: .regular, design: .rounded))
+        }
+    }
+
+    private func toggleRow(
+        title: String,
+        value: Binding<Bool>,
+        onImage: String,
+        offImage: String
+    ) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+
+            Spacer()
+
+            DepthToggle(
+                value: value,
+                onImage: onImage,
+                offImage: offImage
+            )
+        }
+    }
+
+    private func actionRow(
+        title: String,
+        icon: String,
+        color: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+
+            Spacer()
+
+            Button {
+                action()
+            } label: {
+                Image(icon)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18, height: 18)
+                    .frame(width: 42, height: 36)
+            }
+            .buttonStyle(
+                DepthButtonStyle(
+                    backgroundColor: color,
+                    cornerRadius: 12,
+                    depth: 5
+                )
+            )
+            .foregroundColor(.white)
         }
     }
 
@@ -319,68 +250,106 @@ struct SettingsView: View {
                 Color.black.opacity(0.32)
                     .ignoresSafeArea()
                     .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showExitModal = false
-                        }
+                        showExitModal = false
                     }
 
                 VStack(spacing: 20) {
-                    Text("Sure?")
+                    Text("Reset Progress?")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
 
-                    Text("All of your progress will be lost.")
+                    Text("All practice history, statistics and achievements will be deleted.")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
 
                     HStack(spacing: 12) {
                         Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                showExitModal = false
-                            }
+                            showExitModal = false
                         } label: {
                             Text("Cancel")
                                 .font(.system(size: 17, weight: .bold, design: .rounded))
-                                .foregroundColor(AppColor.commonAccentBlue)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 50)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(Color(.systemGray6))
-                                }
                         }
+                        .buttonStyle(
+                            DepthButtonStyle(
+                                backgroundColor: Color(.systemGray5),
+                                cornerRadius: 14,
+                                depth: 5
+                            )
+                        )
+                        .foregroundColor(AppColor.commonAccentBlue)
 
                         Button {
                             showExitModal = false
-                            viewModel.clearSessions()
+                            viewModel.clearProgress()
                         } label: {
-                            Text("Delete")
+                            Text("Reset")
                                 .font(.system(size: 17, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 50)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(.red)
-                                }
                         }
+                        .buttonStyle(
+                            DepthButtonStyle(
+                                backgroundColor: .red,
+                                cornerRadius: 14,
+                                depth: 5
+                            )
+                        )
+                        .foregroundColor(.white)
                     }
                 }
                 .padding(24)
-                .frame(width: 310)
+                .frame(width: 320)
                 .background {
-                    RoundedRectangle(cornerRadius: 24)
-                        .fill(Color.white.opacity(0.96))
-                        .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 10)
+                    RoundedRectangle(
+                        cornerRadius: 24,
+                        style: .continuous
+                    )
+                    .fill(Color(.systemBackground))
                 }
-                .transition(.scale.combined(with: .opacity))
             }
-            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showExitModal)
         }
     }
 }
 
+struct SettingsCard<Content: View>: View {
+    let title: String
+    let content: Content
+
+    init(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+
+
+            VStack(spacing: 14) {
+                content
+            }
+            .padding(16)
+            .background {
+                RoundedRectangle(
+                    cornerRadius: 22,
+                    style: .continuous
+                )
+                .fill(Color.white)
+            }
+        }
+    }
+}
 
 #Preview {
-    SettingsView(viewModel: .init(serviceContainer: PreviewServiceContainer()))
+    SettingsView(
+        viewModel: .init(
+            serviceContainer: PreviewServiceContainer()
+        )
+    )
 }

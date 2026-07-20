@@ -17,8 +17,7 @@ struct FocusTableSelectionView: View {
         VStack(spacing: 0) {
             PracticeModeScreen(
                 title: "Focus Mode",
-                needExitModal: false,
-                trailing: EmptyView(),
+                headerAction: .close,
                 onComplete: {}
             ) {
                 VStack(spacing: 0) {

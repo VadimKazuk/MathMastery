@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SpeedPracticeView: View {
+    @Environment(\.dismiss) private var dismiss
+
     @StateObject var viewModel: ViewModel
     @EnvironmentObject var serviceContainer: ServiceContainer
 
@@ -14,32 +16,53 @@ struct SpeedPracticeView: View {
     var body: some View {
         PracticeModeScreen(
             title: "Speed Mode",
-            trailing: timerBadge,
+            headerAction: .pause,
+
+            onPause: {
+                viewModel.pause()
+            },
+
+            onResume: {
+                viewModel.resume()
+            },
+
+            onRestart: {
+                viewModel.restart()
+            },
+
+            onBack: {
+                dismiss()
+            },
+
             onComplete: completeSession
         ) {
             VStack(spacing: 28) {
+                HStack {
+                    Spacer()
+                    timerBadge
+                }
                 VStack(spacing: 4) {
                     Text("QUESTIONS")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .tracking(1.4)
                         .foregroundColor(.secondary)
-
                     Text("\(viewModel.solvedCount)")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundColor(AppColor.commonAccentBlue)
-
                     Text("Race against time")
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .font(.system(size: 14, design: .rounded))
                         .foregroundColor(.secondary)
                 }
-                .padding(.top, 34)
-
                 questionCard
                 answerGrid
             }
         }
         .overlay {
-            countdownOverlay
+            if let value = viewModel.countdownValue {
+                CountdownOverlayView(
+                    text: value
+                )
+            }
         }
         .onAppear {
             viewModel.beginCountdown()
@@ -47,36 +70,9 @@ struct SpeedPracticeView: View {
         .onDisappear {
             viewModel.stopTimer()
         }
-        .onChange(of: viewModel.isFinished) { _, finished in
-            if finished {
+        .onChange(of: viewModel.shouldShowResult) { _, show in
+            if show {
                 completeSession()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var countdownOverlay: some View {
-        if let countdownValue = viewModel.countdownValue {
-            ZStack {
-                Color.black.opacity(0.32)
-                    .ignoresSafeArea()
-
-                VStack(spacing: 10) {
-                    Text("Get ready")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundColor(.secondary)
-
-                    Text("\(countdownValue)")
-                        .font(.system(size: 64, weight: .heavy, design: .rounded))
-                        .foregroundColor(AppColor.commonAccentBlue)
-                        .monospacedDigit()
-                }
-                .frame(width: 180, height: 150)
-                .background {
-                    RoundedRectangle(cornerRadius: 24)
-                        .fill(Color.white.opacity(0.94))
-                        .shadow(color: Color.black.opacity(0.14), radius: 18, x: 0, y: 10)
-                }
             }
         }
     }
@@ -154,7 +150,6 @@ struct SpeedPracticeView: View {
 private extension SpeedPracticeView {
 
     func completeSession() {
-        viewModel.finish()
         onComplete(viewModel.makeResult())
     }
 

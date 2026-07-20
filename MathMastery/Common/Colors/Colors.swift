@@ -15,6 +15,7 @@ final class AppColor {
     static let colorOrangeHard = Color("color_orange_hard", bundle: nil)
 
     //flame
+    static let colorFlameBlue_0 = Color("color_flame_blue_0", bundle: nil)
     static let colorFlameYellow_1 = Color("color_flame_yellow_1", bundle: nil)
     static let colorFlameOrange_2 = Color("color_flame_orange_2", bundle: nil)
     static let colorFlameRed_3 = Color("color_flame_red_3", bundle: nil)

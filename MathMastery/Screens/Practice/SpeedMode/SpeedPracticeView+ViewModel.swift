@@ -6,6 +6,7 @@ extension SpeedPracticeView {
     final class ViewModel: ObservableObject {
         private let serviceContainer: ServiceContainer
         private let accountService: AccountService
+        private let countdownService: any CountdownService
 
         @Published private(set) var secondsRemaining = sessionDuration
         @Published private(set) var solvedCount = 0
@@ -20,12 +21,13 @@ extension SpeedPracticeView {
         @Published private(set) var isFinished = false
         @Published private(set) var isAcceptingAnswers = false
         @Published private(set) var blinkToggle = false
-
         @Published private(set) var didComplete = false
-        @Published private(set) var countdownValue: Int?
+        @Published private(set) var shouldShowResult = false
 
         @Published private(set) var answers: [PracticeAnswer] = []
 
+        private var wasCountdown = false
+        private var isPaused = false
         private static let sessionDuration = 17
 
         private var questionStartTime = Date()
@@ -33,8 +35,9 @@ extension SpeedPracticeView {
         private var averageResponseTime: Double = 0.0
 
         private var timerCancellable: AnyCancellable?
-        private var countdownCancellable: AnyCancellable?
         private var blinkCancellable: AnyCancellable?
+
+        private var subscriptions = Set<AnyCancellable>()
 
         private let swiftDB: SwiftDataService
 
@@ -42,9 +45,24 @@ extension SpeedPracticeView {
             self.serviceContainer = serviceContainer
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
             self.accountService = serviceContainer.resolve(AccountService.self)
+            self.countdownService = serviceContainer.resolve(
+                dependencyType: .newInstance,
+                (any CountdownService).self
+            )
+
+            countdownService.objectWillChange
+                .sink { [weak self] _ in
+                    self?.objectWillChange.send()
+                }
+                .store(in: &subscriptions)
 
             self.currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
+            print("Speed VM init")
+        }
+
+        var countdownValue: String? {
+            countdownService.text
         }
 
         var isWarningPhase: Bool {
@@ -82,24 +100,27 @@ extension SpeedPracticeView {
                 : .red.opacity(0.4)
         }
 
-        func finish() {
+        func finish(showResult: Bool = false) {
             guard !didComplete else { return }
+
             didComplete = true
 
-            countdownCancellable?.cancel()
-            countdownCancellable = nil
-            countdownValue = nil
-
-            guard !isFinished else { return }
+            countdownService.stop()
 
             isAcceptingAnswers = false
             isFinished = true
+
+            if showResult {
+                shouldShowResult = true
+            }
+
             stopTimer()
         }
 
         private func resetSession() {
             stopTimer()
 
+            didComplete = false
             secondsRemaining = Self.sessionDuration
             solvedCount = 0
             correctCount = 0
@@ -113,6 +134,41 @@ extension SpeedPracticeView {
 
             currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
+        }
+
+        func pause() {
+            guard !isPaused else { return }
+
+            isPaused = true
+            isAcceptingAnswers = false
+
+            wasCountdown = countdownService.text != nil
+
+            timerCancellable?.cancel()
+            timerCancellable = nil
+
+            countdownService.stop()
+        }
+
+        func resume() {
+            guard isPaused else { return }
+
+            isPaused = false
+
+            if wasCountdown {
+                beginCountdown()
+            } else {
+                startTimer()
+            }
+        }
+
+        func restart() {
+            shouldShowResult = false
+            didComplete = false
+            isFinished = false
+
+            resetSession()
+            beginCountdown()
         }
 
         private func startBlinking() {
@@ -146,17 +202,13 @@ extension SpeedPracticeView {
         }
 
         func stopTimer() {
-            countdownCancellable?.cancel()
-            countdownCancellable = nil
+            countdownService.stop()
 
             timerCancellable?.cancel()
             timerCancellable = nil
         }
 
         func beginCountdown() {
-            countdownCancellable?.cancel()
-            countdownCancellable = nil
-
             if isFinished {
                 didComplete = false
                 resetSession()
@@ -164,23 +216,9 @@ extension SpeedPracticeView {
 
             guard !isAcceptingAnswers else { return }
 
-            countdownValue = 3
-
-            countdownCancellable = Timer
-                .publish(every: 1, on: .main, in: .common)
-                .autoconnect()
-                .sink { [weak self] _ in
-                    guard let self else { return }
-
-                    if let value = countdownValue, value > 1 {
-                        countdownValue = value - 1
-                    } else {
-                        countdownValue = nil
-                        countdownCancellable?.cancel()
-                        countdownCancellable = nil
-                        startTimer()
-                    }
-                }
+            countdownService.start(from: 3) {
+                self.startTimer()
+            }
         }
 
         @MainActor
@@ -284,7 +322,7 @@ extension SpeedPracticeView {
             }
 
             if secondsRemaining == 0 {
-                finish()
+                finish(showResult: true)
             }
         }
 

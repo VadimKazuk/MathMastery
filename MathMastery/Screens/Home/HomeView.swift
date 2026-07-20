@@ -5,9 +5,11 @@ import Combine
 struct HomeView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
+    @Binding var selectedTab: ContentContainerView.ContentViewType
 
-    init(viewModel: ViewModel) {
+    init(viewModel: ViewModel, selectedTab: Binding<ContentContainerView.ContentViewType>) {
         self._viewModel = StateObject(wrappedValue: viewModel)
+        self._selectedTab = selectedTab
     }
 
     var body: some View {
@@ -26,8 +28,7 @@ struct HomeView: View {
             }
             .background(Color(uiColor: .systemGroupedBackground))
             .onAppear {
-                viewModel.loadWeeklyMilestone()
-                viewModel.loadStreak()
+                viewModel.loadProgressData()
             }
         }
     }
@@ -50,20 +51,19 @@ struct HomeView: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 0) {
+
+                    let streakLevel = viewModel.streakLevel
+
                     HStack(spacing: 4) {
-                        Image(viewModel.streakLevel.imageName)
+                        Image(streakLevel.imageName)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 28, height: 28)
 
                         Text("\(viewModel.streakCount)")
                             .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundColor(viewModel.streakLevel.color)
+                            .foregroundColor(streakLevel.color)
                     }
-
-                    Text("DAY STREAK")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.secondary)
                 }
             }
 
@@ -81,7 +81,9 @@ struct HomeView: View {
             if !viewModel.hasCompletedToday {
                 CommonButton(
                     title: "Complete Today's Goal",
-                    action: viewModel.resumeSession
+                    action: {
+                            selectedTab = .practice
+                        }
                 )
             }
         }
@@ -134,7 +136,7 @@ struct HomeView: View {
             .padding(.vertical, 4)
             CommonButton(
                 title: "Resume Session",
-                action: viewModel.resumeSession
+                action: {}
             )
         }
         .padding(20)
@@ -186,20 +188,7 @@ struct HomeView: View {
         }
     }
 
-    private var quickStartSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Quick Start")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-
-            HStack(spacing: 12) {
-                QuickStartButton(title: "1-MIN SPRINT", icon: "timer", color: AppColor.commonAccentBlue)
-                QuickStartButton(title: "RANDOM DRILL", icon: "shuffle", color: .purple)
-                QuickStartButton(title: "Rush MODE", icon: "flame.fill", color: .orange)
-            }
-        }
-    }
 }
-
 
 struct WeeklyDayView: View {
     let day: String
@@ -225,21 +214,7 @@ struct WeeklyDayView: View {
     }
 
     private var iconSize: CGFloat {
-        switch status {
-        case .locked, .reward:
-            return 22
-        default:
-            return 22
-        }
-    }
-
-    private var iconTint: Color {
-        switch status {
-        case .locked, .reward:
-            return .gray
-        default:
-            return .primary
-        }
+        22
     }
 
     private var textColor: Color {
@@ -260,41 +235,6 @@ struct WeeklyDayView: View {
 
     private var iconColor: Color {
         status.iconColor
-    }
-}
-
-struct QuickStartButton: View {
-    let title: String
-    let icon: String
-    let color: Color
-    var isBordered: Bool = false
-
-    @State private var scale = 1.0
-
-    var body: some View {
-        Button(action: {}) {
-            VStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 20))
-                    .foregroundColor(color)
-                    .frame(width: 40, height: 40)
-                    .background(isBordered ? Color.clear : color.opacity(0.1))
-                    .clipShape(Circle())
-
-                Text(title)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 100)
-            .background(Color(.secondarySystemGroupedBackground))
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isBordered ? color.opacity(0.3) : Color.clear, lineWidth: 1)
-            )
-        }
     }
 }
 

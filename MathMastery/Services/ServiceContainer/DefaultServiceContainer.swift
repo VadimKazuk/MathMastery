@@ -16,42 +16,47 @@ final class DefaultServiceContainer: ServiceContainer {
             Future<Bool, Never> { [weak self] promise in
                 let storageService = UserDefaultsStorageService()
 
-                let accountService = AccountService(storageService: storageService)
                 self?.register(
                     type: AccountService.self,
-                    as: .singleton,
-                    factory: accountService
-                )
+                    as: .singleton
+                ) {
+                    AccountService(storageService: storageService)
+                }
 
                 self?.register(
                     type: KeychainService.self,
-                    as: .singleton,
-                    factory: KeychainManager()
-                )
+                    as: .singleton
+                ) {
+                    KeychainManager()
+                }
 
                 self?.register(
                     type: GameCenterServiceProtocol.self,
-                    as: .singleton,
-                    factory: GameCenterService()
-                )
+                    as: .singleton
+                ) {
+                    GameCenterService()
+                }
 
-//                self?.register(
-//                    type: ToastManager.self,
-//                    as: .singleton,
-//                    factory: ToastManager()
-//                )
-//
-//                self?.register(
-//                    type: ProgressManager.self,
-//                    as: .singleton,
-//                    factory: ProgressManager()
-//                )
+                self?.register(
+                    type: PracticeAnalyticsService.self,
+                    as: .singleton
+                ) {
+                    PracticeAnalyticsManager()
+                }
+
+                self?.register(
+                    type: (any CountdownService).self,
+                    as: .newInstance
+                ) {
+                    CountdownManager()
+                }
 
                 self?.register(
                     type: SwiftDataService.self,
-                    as: .singleton,
-                    factory: SwiftDataManager()
-                )
+                    as: .singleton
+                ) {
+                    SwiftDataManager()
+                }
 
                 promise(.success(true))
             }

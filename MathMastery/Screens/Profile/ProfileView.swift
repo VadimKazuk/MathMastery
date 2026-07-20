@@ -5,6 +5,9 @@ struct ProfileView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
 
+    @State private var showSettings = false
+    @State private var showHistory = false
+
     @State private var selectedSession: PracticeSession?
 
     @AppStorage("lastShownXP") private var lastXP = 0
@@ -31,24 +34,7 @@ struct ProfileView: View {
                     activitySection
                     learningHeatmapSection
                     recentSessionsPreview
-
-                    NavigationLink {
-                        HistoryListView(
-                            viewModel: .init(serviceContainer: serviceContainer)
-                        )
-                        .hidesCustomTabBar()
-                    } label: {
-                        HStack {
-                            Text("View Full History")
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 14, weight: .bold))
-                        }
-                        .foregroundColor(.white)
-                        .frame(height: 42)
-                        .padding(.horizontal, 20)
-                    }
-                    .buttonStyle(DeptButtonStyle())
+                    fullHistory
                 }
                 .background(ScrollViewConfigurator())
                 .padding(16)
@@ -145,20 +131,22 @@ struct ProfileView: View {
 
                 Spacer()
 
-                NavigationLink {
-                    SettingsView(viewModel: .init(serviceContainer: serviceContainer))
-                        .hidesCustomTabBar()
+                Button {
+                    showSettings = true
                 } label: {
-                    HStack {
-                        Image("ic_gear_white")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 24, height: 24)
-
-                    }
-                    .frame(width: 60, height: 42)
+                    Image("ic_gear_white")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .frame(width: 60, height: 42)
                 }
-                .buttonStyle(DeptButtonStyle())
+                .buttonStyle(DepthButtonStyle())
+                .fullScreenCover(isPresented: $showSettings) {
+                    SettingsView(
+                        viewModel: .init(serviceContainer: serviceContainer)
+                    )
+                    .environmentObject(serviceContainer)
+                }
             }
 
             VStack(spacing: 8) {
@@ -417,6 +405,30 @@ struct ProfileView: View {
         }
     }
 
+    private var fullHistory: some View {
+        Button {
+            showHistory = true
+        } label: {
+            HStack {
+                Text("View Full History")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+            }
+            .foregroundColor(.white)
+            .frame(height: 42)
+            .padding(.horizontal, 20)
+        }
+        .buttonStyle(DepthButtonStyle())
+        .fullScreenCover(isPresented: $showHistory) {
+            HistoryListView(
+                viewModel: .init(serviceContainer: serviceContainer)
+            )
+            .environmentObject(serviceContainer)
+        }
+    }
+
     private func legendItem(
         color: Color,
         title: String
@@ -465,9 +477,10 @@ struct PersonalBestCard: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 14, height: 14)
+                        .opacity(session != nil ? 1 : 0.5)
                     Text(title)
                         .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                        .foregroundColor(session != nil ? .primary : .secondary)
                 }
                 HStack {
                     if let session {
@@ -495,7 +508,7 @@ struct PersonalBestCard: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 14))
         }
-        .buttonStyle(DeptButtonStyle(backgroundColor: .white, cornerRadius: 14, depth: 5, borderWidth: 1))
+        .buttonStyle(DepthButtonStyle(backgroundColor: .white, cornerRadius: 14, depth: 5, borderWidth: 1))
         .disabled(session == nil)
     }
 }

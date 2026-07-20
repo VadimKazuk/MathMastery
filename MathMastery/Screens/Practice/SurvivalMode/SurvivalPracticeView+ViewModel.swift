@@ -20,10 +20,11 @@ extension SurvivalPracticeView {
 
         @Published private(set) var isFinished = false
         @Published private(set) var isAcceptingAnswers = true
+        @Published private(set) var shouldShowResult = false
+        private var didFinish = false
 
         @Published private(set) var answers: [PracticeAnswer] = []
 
-        private var didFinish = false
 
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
@@ -54,12 +55,16 @@ extension SurvivalPracticeView {
 
         // MARK: - Finish
 
-        func finish() {
+        func finish(showResult: Bool = false) {
             guard !didFinish else { return }
-            didFinish = true
 
+            didFinish = true
             isFinished = true
             isAcceptingAnswers = false
+
+            if showResult {
+                shouldShowResult = true
+            }
         }
 
         // MARK: - Answer
@@ -128,10 +133,8 @@ extension SurvivalPracticeView {
             }
 
             if lives <= 0 {
-                isFinished = true
-                isAcceptingAnswers = false
+                finish(showResult: true)
             } else {
-                // Вызываем переиспользованный умный генератор для следующего шага
                 currentQuestion = makeSmartQuestion()
                 updateAnswerOptions()
                 isAcceptingAnswers = true

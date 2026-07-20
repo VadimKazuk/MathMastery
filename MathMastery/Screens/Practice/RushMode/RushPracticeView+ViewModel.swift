@@ -25,43 +25,43 @@ extension RushPracticeView {
         @Published private(set) var currentQuestion = PracticeQuestion(left: 2, right: 2)
         @Published private(set) var answerOptions: [AnswerOption] = []
         @Published private(set) var answers: [PracticeAnswer] = []
+
+        private var isPaused = false
         @Published private(set) var isFinished = false
+        @Published private(set) var shouldShowResult = false
 
-        @Published private(set) var countdownValue: Int?
+        private let countdownService: any CountdownService
+        private var subscriptions = Set<AnyCancellable>()
 
-        private var countdownCancellable: AnyCancellable?
         private var timer: AnyCancellable?
+
+        var countdownValue: String? {
+            countdownService.text
+        }
 
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
             self.accountService = serviceContainer.resolve(AccountService.self)
-            
+
+            self.countdownService = serviceContainer.resolve(
+                dependencyType: .newInstance,
+                (any CountdownService).self
+            )
+
+            countdownService.objectWillChange
+                .sink { [weak self] _ in
+                    self?.objectWillChange.send()
+                }
+                .store(in: &subscriptions)
+
             currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
         }
 
         func start() {
-            countdownValue = 3
-            countdownCancellable =
-            Timer.publish(
-                every: 1,
-                on: .main,
-                in: .common
-            )
-            .autoconnect()
-            .sink { [weak self] _ in
-                guard let self else { return }
-                if let value = countdownValue,
-                   value > 1 {
-                    countdownValue = value - 1
-                } else {
-                    countdownValue = nil
-                    countdownCancellable?.cancel()
-                    countdownCancellable = nil
-
-                    startTimer()
-                }
+            countdownService.start(from: 3) { [weak self] in
+                self?.startTimer()
             }
         }
 
@@ -79,8 +79,61 @@ extension RushPracticeView {
         }
 
         func stopTimer() {
+            countdownService.stop()
+
             timer?.cancel()
             timer = nil
+        }
+
+        func pause() {
+            guard !isPaused else { return }
+
+            isPaused = true
+
+            timer?.cancel()
+            timer = nil
+
+            countdownService.stop()
+        }
+
+        func resume() {
+            guard isPaused else { return }
+
+            isPaused = false
+
+            startTimer()
+        }
+
+        func restart() {
+            stopTimer()
+
+            secondsRemaining = sessionDuration
+            lives = 3
+            correctCount = 0
+            solvedCount = 0
+            currentStreak = 0
+            longestStreak = 0
+            answers = []
+
+            isFinished = false
+            isPaused = false
+
+            currentQuestion = makeSmartQuestion()
+            updateAnswerOptions()
+
+            start()
+        }
+
+        func finish(showResult: Bool = false) {
+            guard !isFinished else { return }
+
+            stopTimer()
+
+            isFinished = true
+
+            if showResult {
+                shouldShowResult = true
+            }
         }
 
         private func tick() {
@@ -92,7 +145,7 @@ extension RushPracticeView {
 
             if secondsRemaining <= 0 {
                 secondsRemaining = 0
-                finish()
+                finish(showResult: true)
             }
         }
 
@@ -139,13 +192,13 @@ extension RushPracticeView {
 
                 if secondsRemaining <= 0 {
                     secondsRemaining = 0
-                    finish()
+                    finish(showResult: true)
                     return
                 }
             }
 
             if lives <= 0 {
-                finish()
+                finish(showResult: true)
                 return
             }
 
@@ -157,13 +210,6 @@ extension RushPracticeView {
                 currentQuestion = makeSmartQuestion()
                 updateAnswerOptions()
             }
-        }
-
-        func finish() {
-            guard !isFinished else { return }
-
-            isFinished = true
-            stopTimer()
         }
 
         private func makeSmartQuestion() -> PracticeQuestion {

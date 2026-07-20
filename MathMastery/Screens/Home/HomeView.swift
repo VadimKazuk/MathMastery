@@ -23,7 +23,7 @@ struct HomeView: View {
                 .background(ScrollViewConfigurator())
                 .padding(.horizontal, 16)
                 .padding(.top, 22)
-                .padding(.bottom, 24)
+                .padding(.bottom, 100)
                 .frame(maxWidth: .infinity)
             }
             .background(Color(uiColor: .systemGroupedBackground))
@@ -117,9 +117,6 @@ struct HomeView: View {
                     Text("\(Int(viewModel.progressPercent * 100))% Progress")
                         .font(.system(size: 13, weight: .medium))
                     Spacer()
-                    Text("\(viewModel.drillsCompleted)/\(viewModel.totalDrills) Drills")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
                 }
 
                 GeometryReader { geo in
@@ -148,44 +145,23 @@ struct HomeView: View {
     private var dailyChallengeCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Daily Challenge")
+                Text("Daily Challenges")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
+
                 Spacer()
+
                 Text("24h REMAINING")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(AppColor.commonAccentBlue)
             }
 
-            HStack(spacing: 16) {
-                ProgressRing(
-                    progress: 12.0 / 20.0,
-                    color: .green,
-                    lineWidth: 4
-                ) {
-                    Text("12")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(.green)
-                }
-                .frame(width: 44, height: 44)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Solve 20 questions")
-                        .font(.system(size: 15, weight: .semibold))
-                    Text("8 more to reach your daily goal!")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.secondary)
+            ForEach(viewModel.challenges) { challenge in
+                ChallengeRow(challenge: challenge)
             }
-            .padding()
-            .background(Color(.secondarySystemGroupedBackground))
-            .cornerRadius(16)
         }
+        .padding(20)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(24)
     }
 
 }
@@ -204,17 +180,13 @@ struct WeeklyDayView: View {
                 Image(iconName)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: iconSize, height: iconSize)
+                    .frame(width: 22, height: 22)
             }
         }
         .frame(width: 40)
         .padding(.vertical, 8)
         .background(pillBgColor)
         .clipShape(Capsule())
-    }
-
-    private var iconSize: CGFloat {
-        22
     }
 
     private var textColor: Color {
@@ -235,6 +207,67 @@ struct WeeklyDayView: View {
 
     private var iconColor: Color {
         status.iconColor
+    }
+}
+
+struct ChallengeRow: View {
+    let challenge: DailyChallenge
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ProgressRing(
+                progress: challenge.progress,
+                color: challenge.color,
+                lineWidth: 4,
+                animated: challenge.shouldAnimate
+            ) {
+                if challenge.isCompleted {
+                    Image(challenge.checkmark)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
+                } else {
+                    Text("\(challenge.current)")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(challenge.color)
+                }
+
+            }
+            .frame(width: 44, height: 44)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Image(challenge.icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 15, height: 15)
+                    Text("\(challenge.title)")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                }
+
+                Text(
+                    challenge.isCompleted
+                    ? "Completed!"
+                    : "\(challenge.remaining) remaining"
+                )
+                .font(.system(size: 13, design: .rounded))
+                .foregroundColor(.secondary)
+            }
+
+            Spacer()
+            if challenge.isCompleted {
+                Text("\(challenge.current)/\(challenge.target)")
+                    .font(.system(size: 13, design: .rounded))
+                    .foregroundColor(.secondary)
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(3)
+        .background(Color(.systemBackground))
+        .cornerRadius(16)
     }
 }
 

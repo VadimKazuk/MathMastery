@@ -6,7 +6,8 @@ extension SpeedPracticeView {
     final class ViewModel: ObservableObject {
         private let serviceContainer: ServiceContainer
         private let accountService: AccountService
-        private let countdownService: any CountdownService
+
+        private let countdownTimer = CountdownTimer()
 
         @Published private(set) var secondsRemaining = sessionDuration
         @Published private(set) var solvedCount = 0
@@ -45,24 +46,19 @@ extension SpeedPracticeView {
             self.serviceContainer = serviceContainer
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
             self.accountService = serviceContainer.resolve(AccountService.self)
-            self.countdownService = serviceContainer.resolve(
-                dependencyType: .newInstance,
-                (any CountdownService).self
-            )
 
-            countdownService.objectWillChange
+            countdownTimer.$text
                 .sink { [weak self] _ in
                     self?.objectWillChange.send()
                 }
                 .store(in: &subscriptions)
 
-            self.currentQuestion = makeSmartQuestion()
+            currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
-            print("Speed VM init")
         }
 
         var countdownValue: String? {
-            countdownService.text
+            countdownTimer.text
         }
 
         var isWarningPhase: Bool {
@@ -105,7 +101,7 @@ extension SpeedPracticeView {
 
             didComplete = true
 
-            countdownService.stop()
+            countdownTimer.stop()
 
             isAcceptingAnswers = false
             isFinished = true
@@ -142,12 +138,12 @@ extension SpeedPracticeView {
             isPaused = true
             isAcceptingAnswers = false
 
-            wasCountdown = countdownService.text != nil
+            wasCountdown = countdownTimer.text != nil
 
             timerCancellable?.cancel()
             timerCancellable = nil
 
-            countdownService.stop()
+            countdownTimer.stop()
         }
 
         func resume() {
@@ -202,7 +198,7 @@ extension SpeedPracticeView {
         }
 
         func stopTimer() {
-            countdownService.stop()
+            countdownTimer.stop()
 
             timerCancellable?.cancel()
             timerCancellable = nil
@@ -216,7 +212,7 @@ extension SpeedPracticeView {
 
             guard !isAcceptingAnswers else { return }
 
-            countdownService.start(from: 3) {
+            countdownTimer.start(from: 3) {
                 self.startTimer()
             }
         }

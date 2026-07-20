@@ -38,20 +38,6 @@ final class DefaultServiceContainer: ServiceContainer {
                 }
 
                 self?.register(
-                    type: PracticeAnalyticsService.self,
-                    as: .singleton
-                ) {
-                    PracticeAnalyticsManager()
-                }
-
-                self?.register(
-                    type: (any CountdownService).self,
-                    as: .newInstance
-                ) {
-                    CountdownManager()
-                }
-
-                self?.register(
                     type: SwiftDataService.self,
                     as: .singleton
                 ) {

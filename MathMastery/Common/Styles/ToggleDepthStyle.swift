@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ToggleDepthStyle: ButtonStyle {
-
     let isSelected: Bool
 
     var selectedColor: Color = AppColor.commonAccentBlue
@@ -21,7 +20,6 @@ struct ToggleDepthStyle: ButtonStyle {
         )
     }
 }
-
 
 private struct ToggleDepthContent: View {
     let configuration: ButtonStyleConfiguration
@@ -108,9 +106,8 @@ private struct ToggleDepthContent: View {
                     }
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 } else {
-                    // Очень короткая задержка + защита
                     let task = Task {
-                        try? await Task.sleep(nanoseconds: 16_000_000) // 16ms
+                        try? await Task.sleep(nanoseconds: 16_000_000)
                         if !Task.isCancelled {
                             withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
                                 pressed = false

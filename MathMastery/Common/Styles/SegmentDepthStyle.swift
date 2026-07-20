@@ -22,7 +22,6 @@ struct SegmentDepthStyle: ButtonStyle {
     }
 }
 
-
 private struct SegmentDepthContent: View {
     let configuration: ButtonStyleConfiguration
     let isSelected: Bool

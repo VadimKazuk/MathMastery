@@ -8,6 +8,8 @@ extension RushPracticeView {
         private let accountService: AccountService
         private let swiftDB: SwiftDataService
 
+        private let countdownTimer = CountdownTimer()
+
         private let sessionDuration = 30
 
         private let maxTime = 45
@@ -30,26 +32,16 @@ extension RushPracticeView {
         @Published private(set) var isFinished = false
         @Published private(set) var shouldShowResult = false
 
-        private let countdownService: any CountdownService
         private var subscriptions = Set<AnyCancellable>()
 
         private var timer: AnyCancellable?
-
-        var countdownValue: String? {
-            countdownService.text
-        }
 
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
             self.accountService = serviceContainer.resolve(AccountService.self)
 
-            self.countdownService = serviceContainer.resolve(
-                dependencyType: .newInstance,
-                (any CountdownService).self
-            )
-
-            countdownService.objectWillChange
+            countdownTimer.$text
                 .sink { [weak self] _ in
                     self?.objectWillChange.send()
                 }
@@ -59,8 +51,12 @@ extension RushPracticeView {
             updateAnswerOptions()
         }
 
+        var countdownValue: String? {
+            countdownTimer.text
+        }
+
         func start() {
-            countdownService.start(from: 3) { [weak self] in
+            countdownTimer.start(from: 3) { [weak self] in
                 self?.startTimer()
             }
         }
@@ -79,7 +75,7 @@ extension RushPracticeView {
         }
 
         func stopTimer() {
-            countdownService.stop()
+            countdownTimer.stop()
 
             timer?.cancel()
             timer = nil
@@ -93,7 +89,7 @@ extension RushPracticeView {
             timer?.cancel()
             timer = nil
 
-            countdownService.stop()
+            countdownTimer.stop()
         }
 
         func resume() {

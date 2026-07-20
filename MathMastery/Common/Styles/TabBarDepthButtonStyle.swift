@@ -19,7 +19,6 @@ struct TabBarDepthButtonStyle: ButtonStyle {
     }
 }
 
-
 private struct ButtonDepthContent: View {
 
     let configuration: ButtonStyleConfiguration

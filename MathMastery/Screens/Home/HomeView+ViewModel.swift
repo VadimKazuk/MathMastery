@@ -2,30 +2,28 @@ import Combine
 import SwiftUI
 
 extension HomeView {
+
     final class ViewModel: ObservableObject {
+
         private let swiftDB: SwiftDataService
-        private let serviceContainer: ServiceContainer
         private let accountService: AccountService
-        private let analyticsService: PracticeAnalyticsService
 
-        private var cancellables = Set<AnyCancellable>()
+        private let weeklyProgressEngine = WeeklyProgressEngine()
+        private let challengeEngine = ChallengeEngine()
 
-        @Published var greetingName: String = "Alex"
         @Published private(set) var streakCount: Int = 0
+
+        @Published var progressPercent: Double = 0.65
         @Published var currentTargetTitle: String = "Focus Mode: x7"
         @Published var currentTargetSubtitle: String = "Mastering the 7 times table with speed drills."
-        @Published var progressPercent: Double = 0.65
-        @Published var drillsCompleted: Int = 13
-        @Published var totalDrills: Int = 20
 
         @Published private(set) var days: [WeeklyDay] = []
+        @Published private(set) var challenges: [DailyChallenge] = []
+
+        private var previousProgress: [DailyChallengeType: Double] = [:]
 
         var streakLevel: StreakLevel {
             StreakLevel(days: streakCount)
-        }
-
-        var avatarName: String {
-            "img_profile_\(accountService.profile.avatarId)"
         }
 
         var hasCompletedToday: Bool {
@@ -36,21 +34,45 @@ extension HomeView {
         }
 
         init(serviceContainer: ServiceContainer) {
-            self.serviceContainer = serviceContainer
-            self.accountService = serviceContainer.resolve(AccountService.self)
-            self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
-            self.analyticsService =
-                serviceContainer.resolve(PracticeAnalyticsService.self)
+            self.accountService =
+                serviceContainer.resolve(AccountService.self)
+            self.swiftDB =
+                serviceContainer.resolve(SwiftDataService.self)
         }
 
         func loadProgressData() {
             let sessions = swiftDB.fetchSessions()
 
-            streakCount = analyticsService.calculateStreak(from: sessions)
-            days = analyticsService.weeklyDays(from: sessions)
+            streakCount = weeklyProgressEngine.calculateStreak(from: sessions)
+            days = weeklyProgressEngine.weeklyDays(from: sessions)
+
+            let generated = challengeEngine.dailyChallenges(
+                from: sessions
+            )
+
+            challenges = generated.map { challenge in
+                let oldProgress = previousProgress[challenge.id]
+
+                previousProgress[challenge.id] = challenge.progress
+
+                let shouldAnimate = {
+                    guard let oldProgress else { return false }
+                    return challenge.progress > oldProgress
+                }()
+
+                return DailyChallenge(
+                    id: challenge.id,
+                    title: challenge.title,
+                    icon: challenge.icon,
+                    checkmark: challenge.checkmark,
+                    current: challenge.current,
+                    target: challenge.target,
+                    shouldAnimate: shouldAnimate
+                )
+            }
         }
-
     }
-}
+    
 
+}
 

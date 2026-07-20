@@ -74,7 +74,6 @@
 		54A65A1D2FF096D60048A1FF /* Exceptions for "MathMastery" folder in "MathMastery" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Common/Views/Untitled.swift,
 				Info.plist,
 			);
 			target = 542CF0732FEAF58D0051FA02 /* MathMastery */;

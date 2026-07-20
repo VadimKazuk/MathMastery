@@ -107,8 +107,7 @@ struct HistoryRow: View {
             ProgressRing(
                 progress: CGFloat(session.accuracy) / 100,
                 color: session.mode.accentColor,
-                lineWidth: 4,
-                animated: true
+                lineWidth: 4
             ) {
                 Text("\(session.accuracy)%")
                     .font(.system(size: 11, weight: .bold, design: .rounded))

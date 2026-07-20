@@ -1,7 +1,5 @@
 import SwiftUI
 
-import SwiftUI
-
 struct CommonButton: View {
     let title: String?
     let image: String?

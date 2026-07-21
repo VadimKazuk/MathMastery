@@ -7,6 +7,12 @@ extension SurvivalPracticeView {
         private let accountService: AccountService
         private let swiftDB: SwiftDataService
 
+        private var sessionStartTime: Date?
+        private var sessionEndTime: Date?
+
+        private var responseTimes: [TimeInterval] = []
+        private var questionStartTime = Date()
+
         @Published private(set) var lives = 3
         @Published private(set) var correctCount = 0
         @Published private(set) var survivedCount = 0
@@ -35,6 +41,40 @@ extension SurvivalPracticeView {
             updateAnswerOptions()
         }
 
+        private var sessionDuration: Int {
+            guard
+                let start = sessionStartTime,
+                let end = sessionEndTime
+            else {
+                return 0
+            }
+
+            return Int(end.timeIntervalSince(start))
+        }
+
+        private var averageResponseTimeValue: Double {
+            guard !responseTimes.isEmpty else {
+                return 0
+            }
+
+            return responseTimes.reduce(0,+)
+            / Double(responseTimes.count)
+        }
+
+        private var fastestResponseTimeValue: Double {
+            responseTimes.min() ?? 0
+        }
+
+        private var answersPerMinuteValue: Double {
+            guard sessionDuration > 0 else {
+                return 0
+            }
+
+            return Double(survivedCount)
+            / Double(sessionDuration)
+            * 60
+        }
+
         // MARK: - Reset
 
         func resetSession() {
@@ -48,7 +88,12 @@ extension SurvivalPracticeView {
             isAcceptingAnswers = true
             didFinish = false
 
-            // Используем умную генерацию при перезапуске сессии
+            sessionStartTime = Date()
+            sessionEndTime = nil
+            responseTimes.removeAll()
+
+            questionStartTime = Date()
+
             currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
         }
@@ -59,6 +104,9 @@ extension SurvivalPracticeView {
             guard !didFinish else { return }
 
             didFinish = true
+
+            sessionEndTime = Date()
+
             isFinished = true
             isAcceptingAnswers = false
 
@@ -74,6 +122,12 @@ extension SurvivalPracticeView {
             guard isAcceptingAnswers, !isFinished else { return }
 
             isAcceptingAnswers = false
+
+            let responseTime = Date()
+                .timeIntervalSince(questionStartTime)
+
+            responseTimes.append(responseTime)
+
             survivedCount += 1
 
             let isCorrect = answer == currentQuestion.answer
@@ -136,6 +190,7 @@ extension SurvivalPracticeView {
                 finish(showResult: true)
             } else {
                 currentQuestion = makeSmartQuestion()
+                questionStartTime = Date()
                 updateAnswerOptions()
                 isAcceptingAnswers = true
             }
@@ -145,12 +200,14 @@ extension SurvivalPracticeView {
         private func saveSession() -> PracticeSession {
             let session = PracticeSession(
                 mode: .survival,
-                duration: nil,
+                duration: sessionDuration,
                 difficulty: nil,
                 correctAnswers: correctCount,
                 questionsCount: survivedCount,
                 longestStreak: longestStreak,
-                averageResponseTime: nil,
+                averageResponseTime: averageResponseTimeValue,
+                fastestResponseTime: fastestResponseTimeValue,
+                answersPerMinute: answersPerMinuteValue,
                 answers: answers
             )
 

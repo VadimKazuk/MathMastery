@@ -20,8 +20,14 @@ extension FocusPracticeView {
 
         private(set) var questions: [PracticeQuestion] = []
 
-        private let questionsAmount: Int = 5
+        private let questionsAmount: Int = 10
         private var isPaused = false
+
+        private var sessionStartTime: Date?
+        private var sessionEndTime: Date?
+
+        private var questionStartTime = Date()
+        private var responseTimes: [TimeInterval] = []
 
         init(
             serviceContainer: ServiceContainer,
@@ -36,6 +42,42 @@ extension FocusPracticeView {
             self.focusTable = focusTable
 
             self.questions = generateQuestions()
+
+            self.sessionStartTime = Date()
+            self.questionStartTime = Date()
+        }
+
+        private var sessionDuration: Int {
+            sessionEndTime = sessionEndTime ?? Date()
+
+            guard
+                let start = sessionStartTime,
+                let end = sessionEndTime
+            else {
+                return 0
+            }
+
+            return Int(end.timeIntervalSince(start))
+        }
+
+        private var averageResponseTimeValue: Double {
+            guard !responseTimes.isEmpty else {
+                return 0
+            }
+
+            return responseTimes.reduce(0,+) / Double(responseTimes.count)
+        }
+
+        private var fastestResponseTimeValue: Double {
+            responseTimes.min() ?? 0
+        }
+
+        private var answersPerMinuteValue: Double {
+            guard sessionDuration > 0 else {
+                return 0
+            }
+
+            return Double(completedQuestions) / Double(sessionDuration) * 60
         }
 
         var currentQuestion: PracticeQuestion {
@@ -93,6 +135,13 @@ extension FocusPracticeView {
             isAnswered = false
 
             answers.removeAll()
+
+            sessionStartTime = Date()
+            sessionEndTime = nil
+
+            responseTimes.removeAll()
+            questionStartTime = Date()
+
             questions = generateQuestions()
         }
 
@@ -137,6 +186,11 @@ extension FocusPracticeView {
 
             isAnswered = true
 
+            let responseTime = Date()
+                .timeIntervalSince(questionStartTime)
+
+            responseTimes.append(responseTime)
+
             let isCorrect = answer == currentQuestion.answer
 
             if isCorrect {
@@ -169,6 +223,9 @@ extension FocusPracticeView {
             }
 
             questionIndex += 1
+
+            questionStartTime = Date()
+
             answerText = ""
             feedback = nil
             isAnswered = false
@@ -182,12 +239,14 @@ extension FocusPracticeView {
             let session = PracticeSession(
                 mode: .focus,
                 focusTable: focusTable,
-                duration: nil,
+                duration: sessionDuration,
                 difficulty: nil,
                 correctAnswers: correctCount,
                 questionsCount: questions.count,
                 longestStreak: 0,
-                averageResponseTime: nil,
+                averageResponseTime: averageResponseTimeValue,
+                fastestResponseTime: fastestResponseTimeValue,
+                answersPerMinute: answersPerMinuteValue,
                 answers: answers
             )
 

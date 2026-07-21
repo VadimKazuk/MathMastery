@@ -9,7 +9,7 @@ extension SpeedPracticeView {
 
         private let countdownTimer = CountdownTimer()
 
-        @Published private(set) var secondsRemaining = sessionDuration
+        @Published private(set) var secondsRemaining = timeLimit
         @Published private(set) var solvedCount = 0
         @Published private(set) var correctCount = 0
         @Published private(set) var bestStreak = 0
@@ -29,11 +29,13 @@ extension SpeedPracticeView {
 
         private var wasCountdown = false
         private var isPaused = false
-        private static let sessionDuration = 17
+        private static let timeLimit = 17
 
         private var questionStartTime = Date()
         private var responseTimes: [TimeInterval] = []
         private var averageResponseTime: Double = 0.0
+        private var sessionStartTime: Date?
+        private var sessionEndTime: Date?
 
         private var timerCancellable: AnyCancellable?
         private var blinkCancellable: AnyCancellable?
@@ -57,6 +59,39 @@ extension SpeedPracticeView {
             updateAnswerOptions()
         }
 
+        private var sessionDuration: Int {
+            guard
+                let start = sessionStartTime,
+                let end = sessionEndTime
+            else {
+                return 0
+            }
+
+            return Int(end.timeIntervalSince(start))
+        }
+
+        var fastestResponseTimeValue: Double {
+            responseTimes.min() ?? 0
+        }
+
+        var answersPerMinuteValue: Double {
+
+            guard
+                let start = sessionStartTime,
+                let end = sessionEndTime
+            else {
+                return 0
+            }
+
+            let duration = end.timeIntervalSince(start)
+
+            guard duration > 0 else {
+                return 0
+            }
+
+            return Double(solvedCount) / duration * 60
+        }
+
         var countdownValue: String? {
             countdownTimer.text
         }
@@ -76,7 +111,7 @@ extension SpeedPracticeView {
         }
 
         var progress: Double {
-            Double(secondsRemaining) / Double(Self.sessionDuration)
+            Double(secondsRemaining) / Double(Self.timeLimit)
         }
 
         var averageResponseTimeValue: Double {
@@ -97,9 +132,12 @@ extension SpeedPracticeView {
         }
 
         func finish(showResult: Bool = false) {
+
             guard !didComplete else { return }
 
             didComplete = true
+
+            sessionEndTime = Date()
 
             countdownTimer.stop()
 
@@ -116,8 +154,12 @@ extension SpeedPracticeView {
         private func resetSession() {
             stopTimer()
 
+            responseTimes = []
+            sessionStartTime = nil
+            sessionEndTime = nil
+
             didComplete = false
-            secondsRemaining = Self.sessionDuration
+            secondsRemaining = Self.timeLimit
             solvedCount = 0
             correctCount = 0
             bestStreak = 0
@@ -186,6 +228,12 @@ extension SpeedPracticeView {
 
         private func startTimer() {
             guard timerCancellable == nil, !isFinished else { return }
+
+            if sessionStartTime == nil {
+                sessionStartTime = Date()
+            }
+
+            questionStartTime = Date()
 
             isAcceptingAnswers = true
 
@@ -366,11 +414,13 @@ extension SpeedPracticeView {
         func saveSession() -> PracticeSession {
             let session = PracticeSession(
                 mode: .speed,
-                duration: Self.sessionDuration,
+                duration: sessionDuration,
                 correctAnswers: correctCount,
                 questionsCount: solvedCount,
                 longestStreak: bestStreak,
-                averageResponseTime: averageResponseTimeValue
+                averageResponseTime: averageResponseTimeValue,
+                fastestResponseTime: fastestResponseTimeValue,
+                answersPerMinute: answersPerMinuteValue
             )
 
             answers.forEach {

@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum PracticeMode: String, CaseIterable, Identifiable, Hashable {
+enum PracticeMode: String, CaseIterable, Identifiable, Hashable, Codable {
     case focus
     case speed
     case survival
@@ -239,13 +239,17 @@ final class PracticeSession {
 
     var focusTable: Int?
 
-    var duration: Int?
     var difficulty: String?
 
     var correctAnswers: Int
     var questionsCount: Int
     var longestStreak: Int
+
     var averageResponseTime: Double?
+    var fastestResponseTime: Double?
+    var answersPerMinute: Double?
+
+    var duration: Int?
 
     @Relationship(deleteRule: .cascade)
     var answers: [PracticeAnswer]
@@ -259,6 +263,8 @@ final class PracticeSession {
         questionsCount: Int,
         longestStreak: Int,
         averageResponseTime: Double? = nil,
+        fastestResponseTime: Double? = nil,
+        answersPerMinute: Double? = nil,
         answers: [PracticeAnswer] = []
     ) {
         self.id = UUID()
@@ -267,13 +273,18 @@ final class PracticeSession {
 
         self.focusTable = focusTable
 
-        self.duration = duration
         self.difficulty = difficulty
 
         self.correctAnswers = correctAnswers
         self.questionsCount = questionsCount
         self.longestStreak = longestStreak
+
         self.averageResponseTime = averageResponseTime
+        self.fastestResponseTime = fastestResponseTime
+        self.answersPerMinute = answersPerMinute
+
+        self.duration = duration
+
         self.answers = answers
     }
 

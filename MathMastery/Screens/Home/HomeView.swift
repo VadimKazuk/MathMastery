@@ -17,6 +17,7 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     weeklyMilestoneCard
+                    todaySummaryCard
                     dailyChallengeCard
                     currentTargetCard
                 }
@@ -82,8 +83,8 @@ struct HomeView: View {
                 CommonButton(
                     title: "Complete Today's Goal",
                     action: {
-                            selectedTab = .practice
-                        }
+                        selectedTab = .practice
+                    }
                 )
             }
         }
@@ -91,6 +92,54 @@ struct HomeView: View {
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(24)
         .shadow(color: Color.black.opacity(0.02), radius: 10, x: 0, y: 5)
+    }
+
+    private var todaySummaryCard: some View {
+        VStack(alignment: .center, spacing: 16) {
+            HStack {
+                Text("Today's Progress")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+
+                Spacer()
+
+                Text(viewModel.todayDateText)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(AppColor.commonAccentBlue)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background {
+                        Capsule()
+                            .fill(AppColor.commonAccentBlue.opacity(0.1))
+                    }
+            }
+
+            HStack(spacing: 12) {
+
+                SummaryMetric(
+                    value: "\(viewModel.todaySummary.questions)",
+                    title: "Questions"
+                )
+
+                SummaryMetric(
+                    value: "\(viewModel.todaySummary.accuracy)%",
+                    title: "Accuracy"
+                )
+
+                SummaryMetric(
+                    value: viewModel.todaySummary.formattedTime,
+                    title: "Practice"
+                )
+
+                SummaryMetric(
+                    value: "+\(viewModel.todaySummary.xp)",
+                    title: "XP"
+                )
+            }
+
+        }
+        .padding(20)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(24)
     }
 
     private var currentTargetCard: some View {
@@ -158,6 +207,20 @@ struct HomeView: View {
             ForEach(viewModel.challenges) { challenge in
                 ChallengeRow(challenge: challenge)
             }
+
+#if DEBUG
+            Button {
+                viewModel.generateNextDayChallengesForTest()
+            } label: {
+                Text("Generate Next Day")
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(AppColor.commonAccentBlue.opacity(0.15))
+                    .foregroundColor(AppColor.commonAccentBlue)
+                    .cornerRadius(12)
+            }
+#endif
         }
         .padding(20)
         .background(Color(.secondarySystemGroupedBackground))
@@ -231,39 +294,30 @@ struct ChallengeRow: View {
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(challenge.color)
                 }
-
             }
             .frame(width: 44, height: 44)
 
             VStack(alignment: .leading, spacing: 3) {
-                HStack {
+                HStack(spacing: 6) {
                     Image(challenge.icon)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 15, height: 15)
-                    Text("\(challenge.title)")
+
+                    Text(challenge.title)
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                 }
 
-                Text(
-                    challenge.isCompleted
-                    ? "Completed!"
-                    : "\(challenge.remaining) remaining"
-                )
-                .font(.system(size: 13, design: .rounded))
-                .foregroundColor(.secondary)
+                Text(challenge.subtitle)
+                    .font(.system(size: 13, design: .rounded))
+                    .foregroundColor(.secondary)
             }
 
             Spacer()
-            if challenge.isCompleted {
-                Text("\(challenge.current)/\(challenge.target)")
-                    .font(.system(size: 13, design: .rounded))
-                    .foregroundColor(.secondary)
-            } else {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.secondary)
-            }
+
+            Text("\(challenge.current)/\(challenge.target)")
+                .font(.system(size: 13, design: .rounded))
+                .foregroundColor(.secondary)
         }
         .padding(3)
         .background(Color(.systemBackground))
@@ -271,3 +325,22 @@ struct ChallengeRow: View {
     }
 }
 
+struct SummaryMetric: View {
+
+    let value: String
+    let title: String
+
+    var body: some View {
+        VStack(spacing: 5) {
+
+            Text(value)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+
+        }
+        .frame(maxWidth: .infinity)
+    }
+}

@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "ic_watch_daily.png",
+      "filename" : "ic_master_daily.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "ic_watch_daily@2x.png",
+      "filename" : "ic_master_daily@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "ic_watch_daily@3x.png",
+      "filename" : "ic_master_daily@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

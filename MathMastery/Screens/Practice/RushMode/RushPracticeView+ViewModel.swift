@@ -10,19 +10,24 @@ extension RushPracticeView {
 
         private let countdownTimer = CountdownTimer()
 
-        private let sessionDuration = 30
+        private var sessionStartTime: Date?
+        private var sessionEndTime: Date?
+
+        private var questionStartTime = Date()
+        private var responseTimes: [TimeInterval] = []
+
+        private let timeLimit = 30
 
         private let maxTime = 45
         private let correctTimeBonus = 2
         private let wrongTimePenalty = 5
 
-        @Published private(set) var secondsRemaining = 30
+        @Published private(set) var secondsRemaining: Int
         @Published private(set) var lives = 3
         @Published private(set) var correctCount = 0
         @Published private(set) var solvedCount = 0
         @Published private(set) var currentStreak = 0
         @Published private(set) var longestStreak = 0
-        
 
         @Published private(set) var currentQuestion = PracticeQuestion(left: 2, right: 2)
         @Published private(set) var answerOptions: [AnswerOption] = []
@@ -41,6 +46,8 @@ extension RushPracticeView {
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
             self.accountService = serviceContainer.resolve(AccountService.self)
 
+            self.secondsRemaining = timeLimit
+
             countdownTimer.$text
                 .sink { [weak self] _ in
                     self?.objectWillChange.send()
@@ -51,12 +58,45 @@ extension RushPracticeView {
             updateAnswerOptions()
         }
 
+        private var sessionDuration: Int {
+            guard
+                let start = sessionStartTime,
+                let end = sessionEndTime
+            else {
+                return 0
+            }
+
+            return Int(end.timeIntervalSince(start))
+        }
+
+        private var averageResponseTimeValue: Double {
+            guard !responseTimes.isEmpty else {
+                return 0
+            }
+
+            return responseTimes.reduce(0,+) / Double(responseTimes.count)
+        }
+
+        private var fastestResponseTimeValue: Double {
+            responseTimes.min() ?? 0
+        }
+
+        private var answersPerMinuteValue: Double {
+            guard sessionDuration > 0 else {
+                return 0
+            }
+
+            return Double(solvedCount) / Double(sessionDuration) * 60
+        }
+
         var countdownValue: String? {
             countdownTimer.text
         }
 
         func start() {
             countdownTimer.start(from: 3) { [weak self] in
+                self?.sessionStartTime = Date()
+                self?.questionStartTime = Date()
                 self?.startTimer()
             }
         }
@@ -103,7 +143,11 @@ extension RushPracticeView {
         func restart() {
             stopTimer()
 
-            secondsRemaining = sessionDuration
+            sessionStartTime = nil
+            sessionEndTime = nil
+            responseTimes.removeAll()
+
+            secondsRemaining = timeLimit
             lives = 3
             correctCount = 0
             solvedCount = 0
@@ -122,6 +166,8 @@ extension RushPracticeView {
 
         func finish(showResult: Bool = false) {
             guard !isFinished else { return }
+
+            sessionEndTime = Date()
 
             stopTimer()
 
@@ -148,6 +194,11 @@ extension RushPracticeView {
         @MainActor
         func selectAnswer(_ answer: Int) {
             guard !isFinished else { return }
+
+            let responseTime = Date()
+                .timeIntervalSince(questionStartTime)
+
+            responseTimes.append(responseTime)
 
             let isCorrect = answer == currentQuestion.answer
 
@@ -204,6 +255,7 @@ extension RushPracticeView {
                 guard !isFinished else { return }
 
                 currentQuestion = makeSmartQuestion()
+                questionStartTime = Date()
                 updateAnswerOptions()
             }
         }
@@ -266,7 +318,9 @@ extension RushPracticeView {
                 correctAnswers: correctCount,
                 questionsCount: solvedCount,
                 longestStreak: longestStreak,
-                averageResponseTime: nil,
+                averageResponseTime: averageResponseTimeValue,
+                fastestResponseTime: fastestResponseTimeValue,
+                answersPerMinute: answersPerMinuteValue,
                 answers: answers
             )
 

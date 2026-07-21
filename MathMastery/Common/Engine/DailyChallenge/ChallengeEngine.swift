@@ -5,100 +5,359 @@ final class ChallengeEngine {
     private let calendar = Calendar.current
 
     func dailyChallenges(
-        from sessions: [PracticeSession]
+        from sessions: [PracticeSession],
+        definitions: [DailyChallengeDefinition]
     ) -> [DailyChallenge] {
 
-        [
-            speedChallenge(from: sessions),
-            masteryChallenge(from: sessions),
-            xpChallenge(from: sessions),
-            survivalChallenge(from: sessions)
-        ]
+        definitions.map {
+            makeChallenge(
+                definition: $0,
+                sessions: sessions
+            )
+        }
     }
 
-    private func speedChallenge(
-        from sessions: [PracticeSession]
+    private func makeChallenge(
+        definition: DailyChallengeDefinition,
+        sessions: [PracticeSession]
     ) -> DailyChallenge {
 
-        let completed = sessions.filter {
-            $0.mode == .speed &&
-            calendar.isDateInToday($0.date)
-        }.count
+        switch definition.type {
 
-        return DailyChallenge(
-            id: .speed,
-            title: "Complete Speed Mode",
-            icon: "ic_bolt_daily",
-            checkmark: "ic_check_yellow",
-            current: completed,
-            target: 1
-        )
+        case .questions:
+            return questionsChallenge(
+                target: definition.target,
+                sessions: sessions
+            )
+
+        case .accuracy:
+            return accuracyChallenge(
+                target: definition.target,
+                sessions: sessions
+            )
+
+        case .mode:
+            return speedChallenge(
+                mode: definition.mode ?? .speed,
+                sessions: sessions
+            )
+
+        case .mastery:
+            return masteryChallenge(
+                table: definition.metadata ?? "7",
+                target: definition.target,
+                sessions: sessions
+            )
+
+        case .survival:
+            return survivalChallenge(
+                target: definition.target,
+                sessions: sessions
+            )
+
+        case .xp:
+            return xpChallenge(
+                target: definition.target,
+                sessions: sessions
+            )
+
+        case .streak:
+            return streakChallenge(
+                target: definition.target,
+                sessions: sessions
+            )
+
+        case .noMistakes:
+            return noMistakesChallenge(
+                target: definition.target,
+                sessions: sessions
+            )
+
+        case .modeMaster:
+            return modeMasterChallenge(
+                sessions: sessions
+            )
+
+        case .personalBest:
+            return personalBestChallenge(
+                mode: definition.mode ?? .speed,
+                sessions: sessions
+            )
+        }
     }
 
-    private func masteryChallenge(
-        from sessions: [PracticeSession]
+
+    // MARK: - Questions
+
+    private func questionsChallenge(
+        target: Int,
+        sessions: [PracticeSession]
     ) -> DailyChallenge {
 
-        let correct = sessions
-            .filter {
-                calendar.isDateInToday($0.date)
-            }
+        let solved = todaySessions(from: sessions)
             .reduce(0) {
-                $0 + $1.correctAnswers
+                $0 + $1.questionsCount
             }
 
         return DailyChallenge(
             id: .questions,
-            title: "Solve 20 Questions",
+            title: "Solve \(target) Questions",
             icon: "ic_fire_daily",
             checkmark: "ic_check_red",
-            current: correct,
-            target: 20
+            current: solved,
+            target: target,
+            mode: nil,
+            metadata: nil
         )
     }
 
-    private func survivalChallenge(
-        from sessions: [PracticeSession]
+
+    // MARK: - Accuracy
+
+    private func accuracyChallenge(
+        target: Int,
+        sessions: [PracticeSession]
     ) -> DailyChallenge {
 
-        let duration = sessions
+        let bestAccuracy = todaySessions(from: sessions)
             .filter {
-                $0.mode == .survival &&
-                calendar.isDateInToday($0.date)
+                $0.questionsCount >= 10
+            }
+            .map(\.accuracy)
+            .max() ?? 0
+
+        return DailyChallenge(
+            id: .accuracy,
+            title: "Reach 100% Accuracy",
+            icon: "ic_accuracy_daily",
+            checkmark: "ic_check_green",
+            current: bestAccuracy,
+            target: target,
+            mode: nil,
+            metadata: "10+ questions"
+        )
+    }
+
+
+    // MARK: - Practice Mode
+
+    private func speedChallenge(
+        mode: PracticeMode,
+        sessions: [PracticeSession]
+    ) -> DailyChallenge {
+
+        let completed = todaySessions(from: sessions)
+            .contains {
+                $0.mode == mode
+            }
+
+        return DailyChallenge(
+            id: .mode,
+            title: "Complete \(mode.title) Mode",
+            icon: mode.icImage,
+            checkmark: "ic_check_yellow",
+            current: completed ? 1 : 0,
+            target: 1,
+            mode: mode,
+            metadata: nil
+        )
+    }
+
+
+    // MARK: - Mastery
+
+    private func masteryChallenge(
+        table: String,
+        target: Int,
+        sessions: [PracticeSession]
+    ) -> DailyChallenge {
+
+        let tableNumber = Int(table) ?? 7
+
+        let progress = todaySessions(from: sessions)
+            .flatMap(\.answers)
+            .filter {
+                $0.left == tableNumber ||
+                $0.right == tableNumber
+            }
+            .count
+
+
+        return DailyChallenge(
+            id: .mastery,
+            title: "Master ×\(tableNumber)",
+            icon: "ic_master_daily",
+            checkmark: "ic_check_purple",
+            current: min(progress, target),
+            target: target,
+            mode: nil,
+            metadata: table
+        )
+    }
+
+
+    // MARK: - Survival
+
+    private func survivalChallenge(
+        target: Int,
+        sessions: [PracticeSession]
+    ) -> DailyChallenge {
+
+        let duration = todaySessions(from: sessions)
+            .filter {
+                $0.mode == .survival
             }
             .reduce(0) {
                 $0 + ($1.duration ?? 0)
             }
 
+
         return DailyChallenge(
             id: .survival,
-            title: "Survive 2 minutes",
-            icon: "ic_watch_daily",
+            title: "Survive \(target / 60) Minutes",
+            icon: "ic_pacman_daily",
             checkmark: "ic_check_orange",
             current: duration,
-            target: 120
+            target: target,
+            mode: .survival,
+            metadata: "\(target / 60) minutes"
         )
     }
 
+
+    // MARK: - XP
+
     private func xpChallenge(
-        from sessions: [PracticeSession]
+        target: Int,
+        sessions: [PracticeSession]
     ) -> DailyChallenge {
 
-        let todaySessions = sessions.filter {
-            calendar.isDateInToday($0.date)
-        }
-
         let xp = XPSystem.total(
-            sessions: todaySessions
+            sessions: todaySessions(from: sessions)
         )
 
         return DailyChallenge(
             id: .xp,
-            title: "Earn 150 XP",
+            title: "Earn \(target) XP",
             icon: "ic_rocket_daily",
             checkmark: "ic_check_blue",
             current: xp,
-            target: 150
+            target: target,
+            mode: nil,
+            metadata: nil
         )
+    }
+
+    private func streakChallenge(
+        target: Int,
+        sessions: [PracticeSession]
+    ) -> DailyChallenge {
+
+        let best = todaySessions(from: sessions)
+            .map(\.longestStreak)
+            .max() ?? 0
+
+        return DailyChallenge(
+            id: .streak,
+            title: "\(target) Answer Streak",
+            icon: "ic_rock_n_roll_daily",
+            checkmark: "ic_check_green",
+            current: best,
+            target: target,
+            mode: nil,
+            metadata: nil
+        )
+    }
+
+    private func noMistakesChallenge(
+        target: Int,
+        sessions: [PracticeSession]
+    ) -> DailyChallenge {
+
+        let completed = todaySessions(from: sessions)
+            .contains {
+                $0.questionsCount >= target &&
+                $0.mistakesCount == 0
+            }
+
+
+        return DailyChallenge(
+            id: .noMistakes,
+            title: "\(target) Perfect Answers",
+            icon: "ic_done_folder_daily",
+            checkmark: "ic_check_mint",
+            current: completed ? target : 0,
+            target: target,
+            mode: nil,
+            metadata: nil
+        )
+    }
+
+    private func modeMasterChallenge(
+        sessions: [PracticeSession]
+    ) -> DailyChallenge {
+
+        let modes: Set<PracticeMode> =
+            Set(
+                todaySessions(from: sessions)
+                    .map(\.mode)
+            )
+
+        return DailyChallenge(
+            id: .modeMaster,
+            title: "Complete All Modes",
+            icon: "ic_task_daily",
+            checkmark: "ic_check_indigo",
+            current: modes.count,
+            target: 4,
+            mode: nil,
+            metadata: "Speed, Focus, Rush, Survival"
+        )
+    }
+
+    private func personalBestChallenge(
+        mode: PracticeMode,
+        sessions: [PracticeSession]
+    ) -> DailyChallenge {
+
+        let history = sessions
+            .filter {
+                $0.mode == mode
+            }
+
+        let best =
+            history
+            .map(\.questionsCount)
+            .max() ?? 0
+
+        let todayBest =
+            todaySessions(from: sessions)
+                .filter {
+                    $0.mode == mode
+                }
+                .map(\.questionsCount)
+                .max() ?? 0
+
+        return DailyChallenge(
+            id: .personalBest,
+            title: "Beat Your \(mode.title) Record",
+            icon: "ic_crown_daily",
+            checkmark: "ic_check_pink",
+            current: todayBest,
+            target: best + 1,
+            mode: mode,
+            metadata: "\(best)"
+        )
+    }
+
+    // MARK: - Helpers
+
+    private func todaySessions(
+        from sessions: [PracticeSession]
+    ) -> [PracticeSession] {
+
+        sessions.filter {
+            calendar.isDateInToday($0.date)
+        }
     }
 }

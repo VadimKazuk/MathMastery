@@ -12,14 +12,16 @@ final class PreviewServiceContainer: ServiceContainer {
 
     private func initServices() {
         Deferred {
-            Future<Bool, Never> { /*[weak self] */ promise in
+            Future<Bool, Never> { [weak self] promise in
+
                 let _ = MemoryStorageService()
 
-//                let accountService = AccountService(storageService: storageService)
-//                accountService.token = "fff"
-//                self?.register(type: AccountService.self, as: .singleton, factory: accountService)
-//
-//                self?.register(type: RESTService.self, as: .singleton, factory: PreviewRESTService())
+                self?.register(
+                    type: AppSettingsManager.self,
+                    as: .singleton
+                ) {
+                    AppSettingsManager()
+                }
 
                 promise(.success(true))
             }

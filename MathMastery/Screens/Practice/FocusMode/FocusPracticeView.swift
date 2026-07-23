@@ -1,76 +1,63 @@
 import SwiftUI
 
+
 struct FocusPracticeView: View {
-    @Environment(\.dismiss) private var dismiss
 
     @StateObject var viewModel: ViewModel
-    let onComplete: (PracticeSession) -> Void
 
-    init(viewModel: ViewModel, onComplete: @escaping (PracticeSession) -> Void) {
+    @State private var shakeAnimation: CGFloat = 0
+
+    let onComplete: (PracticeSession) -> Void
+    let onBackToTableSelection: () -> Void
+    let onExit: () -> Void
+
+    let canChangeTable: Bool
+
+    init(
+        viewModel: ViewModel,
+        canChangeTable: Bool,
+        onComplete: @escaping (PracticeSession) -> Void,
+        onBackToTableSelection: @escaping () -> Void,
+        onExit: @escaping () -> Void
+    ) {
         self._viewModel = StateObject(wrappedValue: viewModel)
+        self.canChangeTable = canChangeTable
         self.onComplete = onComplete
+        self.onBackToTableSelection = onBackToTableSelection
+        self.onExit = onExit
     }
 
     var body: some View {
         PracticeModeScreen(
             title: "Focus Mode",
+            canChangeTable: canChangeTable,
             headerAction: .exitConfirm,
-            onBack: {
-                dismiss()
+            onBackToTableSelection: {
+                onBackToTableSelection()
             },
-            onComplete: {
-                onComplete(viewModel.makeResult())
+            onBack: {
+                onExit()
             }
         ) {
             VStack(spacing: 20) {
+
                 HStack {
-                    Spacer()
                     progressBadge
+                    Spacer()
+
+                    if viewModel.showAnswerButton {
+                        showAnswerButton
+                            .transition(.opacity)
+                    }
                 }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("\(Int(viewModel.progress * 100))% Complete")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundColor(.secondary)
-
-                    ProgressView(value: viewModel.progress)
-                        .tint(AppColor.commonAccentBlue)
-                        .animation(.easeInOut(duration: 0.35), value: viewModel.progress)
-
-                    Text("MULTIPLICATION")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundColor(.secondary)
-                }
+                .frame(height: 50)
+                .animation(
+                    .easeOut(duration: 0.15),
+                    value: viewModel.showAnswerButton
+                )
 
                 questionCard
                 keypad
-
-                if let feedback = viewModel.feedback {
-                    Text(feedback)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundColor(feedback == "Correct" ? .green : .red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                if viewModel.isAnswered {
-                    Button {
-                        if let result = viewModel.moveNextOrResult() {
-                            onComplete(result)
-                        }
-                    } label: {
-                        Text("Next")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 58)
-                            .background {
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(AppColor.commonAccentBlue)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                }
             }
         }
     }
@@ -94,14 +81,30 @@ struct FocusPracticeView: View {
                 Text("×")
                 Text("\(viewModel.currentQuestion.right)")
                 Text("=")
-                Text(viewModel.answerText.isEmpty ? "?" : viewModel.answerText)
-                    .foregroundColor(AppColor.commonAccentBlue)
-                    .frame(minWidth: 48)
+
+                // Анимируем только введенный ответ
+                ZStack {
+                    Text("00")
+                        .hidden()
+
+                    Text(viewModel.answerText.isEmpty ? "?" : viewModel.answerText)
+                        .foregroundColor(viewModel.answerColor)
+                }
+                .frame(minWidth: 36)
                     .overlay(alignment: .bottom) {
                         Rectangle()
                             .fill(AppColor.commonAccentBlue.opacity(0.16))
                             .frame(height: 3)
                             .offset(y: 8)
+                    }
+                    .modifier(ShakeEffect(animatableData: shakeAnimation))
+                    .onChange(of: viewModel.shakeTrigger) {
+                        shakeAnimation = 0
+                        withAnimation(
+                            .easeOut(duration: 0.35)
+                        ) {
+                            shakeAnimation = 1
+                        }
                     }
             }
             .font(.system(size: 36, weight: .bold, design: .rounded))
@@ -110,6 +113,12 @@ struct FocusPracticeView: View {
         .frame(maxWidth: .infinity)
         .frame(height: 136)
         .background {
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(
+                    Color.black.opacity(0.08),
+                    lineWidth: 3
+                )
+
             RoundedRectangle(cornerRadius: 24)
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 6)
@@ -132,17 +141,36 @@ struct FocusPracticeView: View {
                 viewModel.appendDigit(0)
             }
 
-            keypadButton(systemImage: "checkmark") {
-                viewModel.submitAnswer()
-            }
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(AppColor.commonAccentBlue)
+            keypadButton(
+                title: viewModel.isWaitingForNext ? "NEXT" : nil,
+                systemImage: viewModel.isWaitingForNext ? nil : "checkmark",
+                isActionButton: true
+            ) {
+                viewModel.submitAnswer { result in
+                    if let result {
+                        onComplete(result)
+                    }
+                }
             }
         }
     }
 
-    private func keypadButton(title: String? = nil, systemImage: String? = nil, action: @escaping () -> Void) -> some View {
+    private var showAnswerButton: some View {
+        CommonButton(
+            title: "Show Answer",
+            action: {
+                viewModel.showAnswer()
+            }
+        )
+        .frame(width: 150, height: 50)
+    }
+
+    private func keypadButton(
+        title: String? = nil,
+        systemImage: String? = nil,
+        isActionButton: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Group {
                 if let title {
@@ -151,21 +179,43 @@ struct FocusPracticeView: View {
                     Image(systemName: systemImage)
                 }
             }
-            .font(.system(size: 24, weight: .bold, design: .rounded))
-            .foregroundColor(systemImage == "checkmark" ? .white : .primary)
+            .font(.system(size: title == "NEXT" ? 18 : 24, weight: .bold, design: .rounded))
+            .foregroundColor(isActionButton ? .white : .primary)
             .frame(maxWidth: .infinity)
             .frame(height: 68)
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(systemImage == "checkmark" ? AppColor.commonAccentBlue : Color.white)
-            }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(
+            DepthButtonStyle(
+                backgroundColor: isActionButton ? AppColor.commonAccentBlue : Color.white,
+                cornerRadius: 14,
+                depth: 5,
+                borderWidth: 1
+            )
+        )
     }
 }
-
 
 enum FocusPracticeMode: Hashable {
     case table(Int)
     case all
+}
+
+struct ShakeEffect: GeometryEffect {
+
+    var amount: CGFloat = 8
+    var shakes: CGFloat = 4
+
+    var animatableData: CGFloat
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+
+        let translation = amount * sin(animatableData * .pi * shakes)
+
+        return ProjectionTransform(
+            CGAffineTransform(
+                translationX: translation,
+                y: 0
+            )
+        )
+    }
 }

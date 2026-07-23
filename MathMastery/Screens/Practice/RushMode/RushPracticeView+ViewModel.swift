@@ -33,8 +33,13 @@ extension RushPracticeView {
         @Published private(set) var answerOptions: [AnswerOption] = []
         @Published private(set) var answers: [PracticeAnswer] = []
 
+        @Published private(set) var selectedAnswer: Int?
+        @Published private(set) var answerResult: AnswerResult?
+
         private var isPaused = false
+        private var isCountingDown = false
         @Published private(set) var isFinished = false
+        @Published private(set) var isAcceptingAnswers = false
         @Published private(set) var shouldShowResult = false
 
         private var subscriptions = Set<AnyCancellable>()
@@ -56,6 +61,35 @@ extension RushPracticeView {
 
             currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
+        }
+
+        var questionExpression: String {
+            "\(currentQuestion.left) × \(currentQuestion.right) = "
+        }
+
+        var selectedAnswerText: String {
+            selectedAnswer.map(String.init) ?? "?"
+        }
+
+        var questionText: String {
+            guard let selectedAnswer else {
+                return "\(currentQuestion.left) × \(currentQuestion.right) = ?"
+            }
+
+            return "\(currentQuestion.left) × \(currentQuestion.right) = \(selectedAnswer)"
+        }
+
+        var answerTextColor: Color {
+            switch answerResult {
+            case .correct:
+                return .green
+
+            case .wrong:
+                return .red
+
+            case .none:
+                return AppColor.commonAccentBlue
+            }
         }
 
         private var sessionDuration: Int {
@@ -94,14 +128,27 @@ extension RushPracticeView {
         }
 
         func start() {
+            isCountingDown = true
+
             countdownTimer.start(from: 3) { [weak self] in
-                self?.sessionStartTime = Date()
-                self?.questionStartTime = Date()
-                self?.startTimer()
+                guard let self else { return }
+
+                DispatchQueue.main.async {
+                    self.isCountingDown = false
+
+                    guard !self.isPaused else { return }
+
+                    self.sessionStartTime = Date()
+                    self.questionStartTime = Date()
+                    self.startTimer()
+                }
             }
         }
 
         private func startTimer() {
+            guard !isPaused else { return }
+            guard timer == nil else { return }
+
             timer =
             Timer.publish(
                 every: 1,
@@ -112,6 +159,8 @@ extension RushPracticeView {
             .sink { [weak self] _ in
                 self?.tick()
             }
+
+            isAcceptingAnswers = true
         }
 
         func stopTimer() {
@@ -125,6 +174,7 @@ extension RushPracticeView {
             guard !isPaused else { return }
 
             isPaused = true
+            isAcceptingAnswers = false
 
             timer?.cancel()
             timer = nil
@@ -137,7 +187,11 @@ extension RushPracticeView {
 
             isPaused = false
 
-            startTimer()
+            if isCountingDown {
+                start()
+            } else {
+                startTimer()
+            }
         }
 
         func restart() {
@@ -158,8 +212,13 @@ extension RushPracticeView {
             isFinished = false
             isPaused = false
 
+            selectedAnswer = nil
+            answerResult = nil
+            
             currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
+
+            isAcceptingAnswers = false
 
             start()
         }
@@ -171,6 +230,7 @@ extension RushPracticeView {
 
             stopTimer()
 
+            isAcceptingAnswers = false
             isFinished = true
 
             if showResult {
@@ -193,14 +253,22 @@ extension RushPracticeView {
 
         @MainActor
         func selectAnswer(_ answer: Int) {
-            guard !isFinished else { return }
+            guard isAcceptingAnswers, !isFinished else { return }
 
             let responseTime = Date()
                 .timeIntervalSince(questionStartTime)
 
             responseTimes.append(responseTime)
 
+            isAcceptingAnswers = false
+
+            selectedAnswer = answer
+
             let isCorrect = answer == currentQuestion.answer
+
+            answerResult = isCorrect
+                ? .correct
+                : .wrong
 
             if let index = answerOptions.firstIndex(where: { $0.value == currentQuestion.answer }) {
                 answerOptions[index].state = .correct
@@ -253,6 +321,11 @@ extension RushPracticeView {
                 try? await Task.sleep(for: .milliseconds(400))
 
                 guard !isFinished else { return }
+
+                selectedAnswer = nil
+                answerResult = nil
+
+                isAcceptingAnswers = true
 
                 currentQuestion = makeSmartQuestion()
                 questionStartTime = Date()
@@ -337,9 +410,9 @@ extension RushPracticeView {
             case .normal:
                 return .white
             case .correct:
-                return .green.opacity(0.25)
+                return .green
             case .wrong:
-                return .red.opacity(0.25)
+                return .red
             }
         }
     }

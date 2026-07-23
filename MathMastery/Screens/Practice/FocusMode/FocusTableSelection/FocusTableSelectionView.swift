@@ -3,13 +3,16 @@ import SwiftUI
 struct FocusTableSelectionView: View {
     @StateObject private var viewModel: ViewModel
     let onSelect: (FocusPracticeTarget) -> Void
-    
+    let onExit: () -> Void
+
     init(
         serviceContainer: ServiceContainer,
-        onSelect: @escaping (FocusPracticeTarget) -> Void
+        onSelect: @escaping (FocusPracticeTarget) -> Void,
+        onExit: @escaping () -> Void
     ) {
         self._viewModel = StateObject(wrappedValue: ViewModel(serviceContainer: serviceContainer))
         self.onSelect = onSelect
+        self.onExit = onExit
     }
     
     var body: some View {
@@ -18,7 +21,9 @@ struct FocusTableSelectionView: View {
             PracticeModeScreen(
                 title: "Focus Mode",
                 headerAction: .close,
-                onComplete: {}
+                onBack: {
+                    onExit()
+                }
             ) {
                 VStack(spacing: 0) {
                     

@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ContentContainerView: View {
     @StateObject var viewModel: ViewModel
+
     @StateObject private var tabBarVisibility = TabBarVisibility()
+
     @EnvironmentObject var serviceContainer: ServiceContainer
 
     init(viewModel: ViewModel) {
@@ -13,20 +15,39 @@ struct ContentContainerView: View {
         ZStack(alignment: .bottom) {
             TabView(selection: $viewModel.contentViewType) {
                 HomeView(
-                    viewModel: .init(serviceContainer: serviceContainer),
-                    selectedTab: $viewModel.contentViewType
+                    viewModel: .init(
+                        serviceContainer: serviceContainer
+                    ),
+                    selectedTab: $viewModel.contentViewType,
+                    onStartPractice: { action in
+                        viewModel.practiceLaunch = convertToLaunch(action)
+                    }
                 )
-                    .toolbar(.hidden, for: .tabBar)
-                    .tag(ContentViewType.home)
-                LearnView(viewModel: .init(serviceContainer: serviceContainer))
-                    .toolbar(.hidden, for: .tabBar)
-                    .tag(ContentViewType.learn)
-                PracticeView(viewModel: .init(serviceContainer: serviceContainer))
-                    .toolbar(.hidden, for: .tabBar)
-                    .tag(ContentViewType.practice)
-                ProfileView(viewModel: .init(serviceContainer: serviceContainer))
-                    .toolbar(.hidden, for: .tabBar)
-                    .tag(ContentViewType.profile)
+                .toolbar(.hidden, for: .tabBar)
+                .tag(ContentViewType.home)
+
+                LearnView(
+                    viewModel: .init(serviceContainer: serviceContainer)
+                )
+                .toolbar(.hidden, for: .tabBar)
+                .tag(ContentViewType.learn)
+
+                PracticeView(
+                    viewModel: .init(
+                        serviceContainer: serviceContainer
+                    ),
+                    onStartMode: { mode in
+                        viewModel.practiceLaunch = .mode(mode)
+                    }
+                )
+                .toolbar(.hidden, for: .tabBar)
+                .tag(ContentViewType.practice)
+                
+                ProfileView(
+                    viewModel: .init(serviceContainer: serviceContainer)
+                )
+                .toolbar(.hidden, for: .tabBar)
+                .tag(ContentViewType.profile)
             }
             CustomTabBar(selection: $viewModel.contentViewType)
                 .background(
@@ -39,11 +60,40 @@ struct ContentContainerView: View {
                 .opacity(tabBarVisibility.isHidden ? 0 : 1)
                 .allowsHitTesting(!tabBarVisibility.isHidden)
         }
+        .fullScreenCover(
+            item: $viewModel.practiceLaunch
+        ) { launch in
+
+            PracticeFlowView(
+                launch: launch,
+                serviceContainer: serviceContainer,
+                onClose: {
+                    viewModel.practiceLaunch = nil
+                    NotificationCenter.default.post(
+                        name: .practiceCompleted,
+                        object: nil
+                    )
+                }
+            )
+        }
         .onPreferenceChange(TabBarHeightKey.self) { newHeight in
             tabBarVisibility.measuredHeight = newHeight
         }
         .environmentObject(tabBarVisibility)
     }
+
+    private func convertToLaunch(
+        _ action: ImprovementAction
+    ) -> PracticeLaunch {
+
+        switch action {
+        case .focusTable(let table):
+            return .focus(table: table, canChangeTable: false)
+        case .practiceMode(let mode):
+            return .mode(mode)
+        }
+    }
+
 }
 
 struct MainScreen_Preview: PreviewProvider {

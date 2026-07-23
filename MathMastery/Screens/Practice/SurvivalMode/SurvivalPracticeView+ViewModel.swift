@@ -20,17 +20,18 @@ extension SurvivalPracticeView {
         @Published private(set) var currentStreak = 0
         @Published private(set) var longestStreak = 0
 
-        // Стартуем сразу с умной генерации вопроса, поэтому базовый дефолт опускаем
+        @Published private(set) var selectedAnswer: Int?
+        @Published private(set) var answerResult: AnswerResult?
+
         @Published private(set) var currentQuestion = PracticeQuestion(left: 2, right: 2)
         @Published private(set) var answerOptions: [AnswerOption] = []
+        @Published private(set) var answers: [PracticeAnswer] = []
 
         @Published private(set) var isFinished = false
         @Published private(set) var isAcceptingAnswers = true
         @Published private(set) var shouldShowResult = false
+
         private var didFinish = false
-
-        @Published private(set) var answers: [PracticeAnswer] = []
-
 
         init(serviceContainer: ServiceContainer) {
             self.serviceContainer = serviceContainer
@@ -39,6 +40,35 @@ extension SurvivalPracticeView {
 
             currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
+        }
+
+        var questionExpression: String {
+            "\(currentQuestion.left) × \(currentQuestion.right) = "
+        }
+
+        var selectedAnswerText: String {
+            selectedAnswer.map(String.init) ?? "?"
+        }
+
+        var questionText: String {
+            guard let selectedAnswer else {
+                return "\(currentQuestion.left) × \(currentQuestion.right) = ?"
+            }
+
+            return "\(currentQuestion.left) × \(currentQuestion.right) = \(selectedAnswer)"
+        }
+
+        var answerTextColor: Color {
+            switch answerResult {
+            case .correct:
+                return .green
+
+            case .wrong:
+                return .red
+
+            case .none:
+                return AppColor.commonAccentBlue
+            }
         }
 
         private var sessionDuration: Int {
@@ -130,7 +160,13 @@ extension SurvivalPracticeView {
 
             survivedCount += 1
 
+            selectedAnswer = answer
+
             let isCorrect = answer == currentQuestion.answer
+
+            answerResult = isCorrect
+                ? .correct
+                : .wrong
 
             if let correctIndex = answerOptions.firstIndex(where: { $0.value == currentQuestion.answer }) {
                 answerOptions[correctIndex].state = .correct
@@ -150,13 +186,10 @@ extension SurvivalPracticeView {
         // MARK: - Smart Question Generator Integration
 
         private func makeSmartQuestion() -> PracticeQuestion {
-            // 1. Извлекаем историю всех прошлых ответов из SwiftData
             let allAnswers = swiftDB.fetchSessions().flatMap { $0.answers }
 
-            // 2. Делегируем выбор ячейки общему сервису SmartQuestionGenerator
             let selectedCell = SmartQuestionGenerator.generateSingleCell(allAnswers: allAnswers)
 
-            // 3. Визуальное разнообразие: случайно меняем множители местами (7х8 или 8х7)
             let shouldSwap = Bool.random()
             return PracticeQuestion(
                 left: shouldSwap ? selectedCell.right : selectedCell.left,
@@ -194,6 +227,9 @@ extension SurvivalPracticeView {
                 updateAnswerOptions()
                 isAcceptingAnswers = true
             }
+
+            selectedAnswer = nil
+            answerResult = nil
         }
 
         // MARK: - SwiftData
@@ -271,8 +307,8 @@ extension SurvivalPracticeView {
         func backgroundColor(for option: AnswerOption) -> Color {
             switch option.state {
             case .normal: return .white
-            case .correct: return .green.opacity(0.25)
-            case .wrong: return .red.opacity(0.25)
+            case .correct: return .green
+            case .wrong: return .red
             }
         }
     }

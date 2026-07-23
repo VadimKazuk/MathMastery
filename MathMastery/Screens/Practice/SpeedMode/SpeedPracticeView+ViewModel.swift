@@ -4,6 +4,7 @@ import SwiftData
 
 extension SpeedPracticeView {
     final class ViewModel: ObservableObject {
+
         private let serviceContainer: ServiceContainer
         private let accountService: AccountService
 
@@ -24,6 +25,9 @@ extension SpeedPracticeView {
         @Published private(set) var blinkToggle = false
         @Published private(set) var didComplete = false
         @Published private(set) var shouldShowResult = false
+
+        @Published private(set) var selectedAnswer: Int?
+        @Published private(set) var answerResult: AnswerResult?
 
         @Published private(set) var answers: [PracticeAnswer] = []
 
@@ -57,6 +61,35 @@ extension SpeedPracticeView {
 
             currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
+        }
+
+        var questionExpression: String {
+            "\(currentQuestion.left) × \(currentQuestion.right) = "
+        }
+
+        var selectedAnswerText: String {
+            selectedAnswer.map(String.init) ?? "?"
+        }
+
+        var questionText: String {
+            guard let selectedAnswer else {
+                return "\(currentQuestion.left) × \(currentQuestion.right) = ?"
+            }
+
+            return "\(currentQuestion.left) × \(currentQuestion.right) = \(selectedAnswer)"
+        }
+        
+        var answerTextColor: Color {
+            switch answerResult {
+            case .correct:
+                return .green
+
+            case .wrong:
+                return .red
+
+            case .none:
+                return AppColor.commonAccentBlue
+            }
         }
 
         private var sessionDuration: Int {
@@ -154,6 +187,8 @@ extension SpeedPracticeView {
         private func resetSession() {
             stopTimer()
 
+            isPaused = false
+
             responseTimes = []
             sessionStartTime = nil
             sessionEndTime = nil
@@ -204,6 +239,7 @@ extension SpeedPracticeView {
             shouldShowResult = false
             didComplete = false
             isFinished = false
+            isPaused = false
 
             resetSession()
             beginCountdown()
@@ -227,6 +263,7 @@ extension SpeedPracticeView {
         }
 
         private func startTimer() {
+            guard !isPaused else { return }
             guard timerCancellable == nil, !isFinished else { return }
 
             if sessionStartTime == nil {
@@ -260,8 +297,13 @@ extension SpeedPracticeView {
 
             guard !isAcceptingAnswers else { return }
 
-            countdownTimer.start(from: 3) {
-                self.startTimer()
+            countdownTimer.start(from: 3) { [weak self] in
+                guard let self else { return }
+
+                DispatchQueue.main.async {
+                    guard !self.isPaused else { return }
+                    self.startTimer()
+                }
             }
         }
 
@@ -274,7 +316,13 @@ extension SpeedPracticeView {
 
             isAcceptingAnswers = false
 
+            selectedAnswer = answer
+
             let isCorrect = answer == currentQuestion.answer
+
+            answerResult = isCorrect
+                ? .correct
+                : .wrong
 
             answers.append(
                 PracticeAnswer(
@@ -296,7 +344,7 @@ extension SpeedPracticeView {
             }
 
             Task {
-                try? await Task.sleep(for: .milliseconds(400))
+                try? await Task.sleep(for: .milliseconds(500))
                 advance(answer)
             }
         }
@@ -313,6 +361,9 @@ extension SpeedPracticeView {
             }
 
             questionIndex += 1
+
+            selectedAnswer = nil
+            answerResult = nil
 
             currentQuestion = makeSmartQuestion()
             questionStartTime = Date()
@@ -340,12 +391,9 @@ extension SpeedPracticeView {
 
         func backgroundColor(for option: AnswerOption) -> Color {
             switch option.state {
-            case .normal:
-                return .white
-            case .correct:
-                return .green.opacity(0.25)
-            case .wrong:
-                return .red.opacity(0.25)
+            case .normal: return .white
+            case .correct: return .green
+            case .wrong: return .red
             }
         }
 

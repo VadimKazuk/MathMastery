@@ -8,6 +8,8 @@ final class LearnEngine {
     }
 
     struct TableStats {
+        let correct: Int
+        let total: Int
         let accuracy: Int
         let level: MistakeLevel
     }
@@ -66,7 +68,12 @@ final class LearnEngine {
         }
 
         for key in result.keys {
-            result[key]?.sort { $0.date > $1.date }
+            result[key]?.sort {
+                if $0.date == $1.date {
+                    return $0.id > $1.id
+                }
+                return $0.date > $1.date
+            }
         }
 
         return result
@@ -180,6 +187,8 @@ final class LearnEngine {
         )
 
         return TableStats(
+            correct: correct,
+            total: total,
             accuracy: accuracy,
             level: CellLevelCalculator.level(
                 correct: correct,
@@ -277,3 +286,4 @@ extension LearnEngine {
         }
     }
 }
+

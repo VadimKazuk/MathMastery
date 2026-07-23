@@ -125,7 +125,12 @@ struct ProfileView: View {
                         .padding(8)
                     }
                     .buttonStyle(
-                        .plain
+                        DepthButtonStyle(
+                            backgroundColor: .white,
+                            cornerRadius: 6,
+                            depth: 3,
+                            borderWidth: 0.5
+                        )
                     )
                 }
 
@@ -140,7 +145,14 @@ struct ProfileView: View {
                         .frame(width: 24, height: 24)
                         .frame(width: 60, height: 42)
                 }
-                .buttonStyle(DepthButtonStyle())
+                .buttonStyle(
+                    DepthButtonStyle(
+                        backgroundColor: AppColor.commonAccentBlue,
+                        cornerRadius: 14,
+                        depth: 5,
+                        borderWidth: 1
+                    )
+                )
                 .fullScreenCover(isPresented: $showSettings) {
                     SettingsView(
                         viewModel: .init(serviceContainer: serviceContainer)
@@ -406,26 +418,17 @@ struct ProfileView: View {
     }
 
     private var fullHistory: some View {
-        Button {
-            showHistory = true
-        } label: {
-            HStack {
-                Text("View Full History")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .bold))
+        CommonButton(
+            title: "View Full History",
+            rightImage: "chevron.right",
+            action: {
+                showHistory = true
             }
-            .foregroundColor(.white)
-            .frame(height: 42)
-            .padding(.horizontal, 20)
-        }
-        .buttonStyle(DepthButtonStyle())
+        )
+        .frame(width: 200)
         .fullScreenCover(isPresented: $showHistory) {
-            HistoryListView(
-                viewModel: .init(serviceContainer: serviceContainer)
-            )
-            .environmentObject(serviceContainer)
+            HistoryListView(viewModel: .init(serviceContainer: serviceContainer))
+                .environmentObject(serviceContainer)
         }
     }
 
@@ -508,7 +511,13 @@ struct PersonalBestCard: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 14))
         }
-        .buttonStyle(DepthButtonStyle(backgroundColor: .white, cornerRadius: 14, depth: 5, borderWidth: 1))
+        .buttonStyle(
+            DepthButtonStyle(
+                backgroundColor: .white,
+                cornerRadius: 14,
+                depth: 5,
+                borderWidth: 1)
+        )
         .disabled(session == nil)
     }
 }

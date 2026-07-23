@@ -50,6 +50,7 @@ struct CountdownOverlayView: View {
                 .fill(Color(.systemBackground))
             }
         }
+        
         .onAppear {
             displayedText = text
             animateNumber()

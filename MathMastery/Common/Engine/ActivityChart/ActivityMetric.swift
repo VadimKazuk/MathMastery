@@ -4,7 +4,10 @@ enum ActivityMetric: String, CaseIterable, Identifiable {
 
     case solved
     case accuracy
-    case responseTime
+    case averageResponseTime
+    case fastestResponseTime
+    case answersPerMinute
+    case duration
     case sessions
     case xp
 
@@ -22,8 +25,17 @@ enum ActivityMetric: String, CaseIterable, Identifiable {
         case .accuracy:
             return "Accuracy"
 
-        case .responseTime:
-            return "Response Time"
+        case .averageResponseTime:
+            return "Average Time"
+
+        case .fastestResponseTime:
+            return "Fastest Time"
+
+        case .answersPerMinute:
+            return "Answers / Min"
+
+        case .duration:
+            return "Practice Time"
 
         case .sessions:
             return "Sessions"

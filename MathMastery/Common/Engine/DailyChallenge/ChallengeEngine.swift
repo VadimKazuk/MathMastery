@@ -2,6 +2,8 @@ import Foundation
 
 final class ChallengeEngine {
 
+    private let personalBestEngine = PersonalBestEngine()
+
     private let calendar = Calendar.current
 
     func dailyChallenges(
@@ -37,7 +39,7 @@ final class ChallengeEngine {
             )
 
         case .mode:
-            return speedChallenge(
+            return modeChallenge(
                 mode: definition.mode ?? .speed,
                 sessions: sessions
             )
@@ -141,7 +143,7 @@ final class ChallengeEngine {
 
     // MARK: - Practice Mode
 
-    private func speedChallenge(
+    private func modeChallenge(
         mode: PracticeMode,
         sessions: [PracticeSession]
     ) -> DailyChallenge {
@@ -315,38 +317,67 @@ final class ChallengeEngine {
         )
     }
 
+    // MARK: - Personal Best
+
     private func personalBestChallenge(
         mode: PracticeMode,
         sessions: [PracticeSession]
     ) -> DailyChallenge {
 
-        let history = sessions
+        let history = sessions.filter {
+            $0.mode == mode &&
+            !calendar.isDateInToday($0.date)
+        }
+
+        let today = todaySessions(from: sessions)
             .filter {
                 $0.mode == mode
             }
 
-        let best =
-            history
-            .map(\.questionsCount)
-            .max() ?? 0
+        let previousBest = personalBestEngine.bestSession(
+            for: mode,
+            sessions: history
+        )
 
-        let todayBest =
-            todaySessions(from: sessions)
-                .filter {
-                    $0.mode == mode
-                }
-                .map(\.questionsCount)
-                .max() ?? 0
+        let todayBest = personalBestEngine.bestSession(
+            for: mode,
+            sessions: today
+        )
+
+        let beaten: Bool
+
+        if previousBest == nil {
+
+            beaten = todayBest != nil
+
+        } else if let previousBest,
+                  let todayBest {
+
+            beaten = personalBestEngine.isBetter(
+                todayBest,
+                than: previousBest,
+                mode: mode
+            )
+
+        } else {
+
+            beaten = false
+        }
 
         return DailyChallenge(
             id: .personalBest,
             title: "Beat Your \(mode.title) Record",
             icon: "ic_crown_daily",
             checkmark: "ic_check_pink",
-            current: todayBest,
-            target: best + 1,
+            current: beaten ? 1 : 0,
+            target: 1,
             mode: mode,
-            metadata: "\(best)"
+            metadata: previousBest.map {
+                personalBestEngine.value(
+                    for: $0,
+                    mode: mode
+                )
+            } ?? "-"
         )
     }
 
@@ -361,3 +392,4 @@ final class ChallengeEngine {
         }
     }
 }
+

@@ -24,6 +24,13 @@ final class DefaultServiceContainer: ServiceContainer {
                 }
 
                 self?.register(
+                    type: AppSettingsManager.self,
+                    as: .singleton
+                ) {
+                    AppSettingsManager()
+                }
+
+                self?.register(
                     type: KeychainService.self,
                     as: .singleton
                 ) {

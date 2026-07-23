@@ -6,3 +6,7 @@ extension Double {
         return (self * divisor).rounded() / divisor
     }
 }
+
+extension Notification.Name {
+    static let practiceCompleted = Notification.Name("practiceCompleted")
+}

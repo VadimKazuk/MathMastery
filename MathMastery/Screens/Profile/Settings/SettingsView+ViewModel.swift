@@ -14,40 +14,67 @@ extension SettingsView {
     final class ViewModel: ObservableObject {
 
         private let swiftDB: SwiftDataService
+        private let appSettings: AppSettingsManager
 
         // Learning
         @Published var selectedRange: LearningRange = .x2_x10
         @Published var showCorrectAnswer = true
 
         // Practice
-        @Published var hapticFeedback = true
+
         @Published var soundEffects = false
         @Published var autoStartPractice = true
 
         // Daily goal
         @Published var dailyGoal = 20
 
+        private var cancellables = Set<AnyCancellable>()
+
 
         init(serviceContainer: ServiceContainer) {
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
+            self.appSettings = serviceContainer.resolve(AppSettingsManager.self)
+
+            appSettings.objectWillChange
+                .sink { [weak self] _ in
+                    self?.objectWillChange.send()
+                }
+                .store(in: &cancellables)
+        }
+// dev
+        func setDeveloperMode(_ value: Bool) {
+            appSettings.developerMode = value
         }
 
+        var developerMode: Binding<Bool> {
+            Binding(
+                get: {
+                    self.appSettings.developerMode
+                },
+                set: {
+                    self.appSettings.developerMode = $0
+                }
+            )
+        }
+
+        func hapticFeedbackBinding() -> Binding<Bool> {
+            Binding(
+                get: {
+                    self.appSettings.hapticFeedback
+                },
+                set: {
+                    self.appSettings.hapticFeedback = $0
+                }
+            )
+        }
 
         func clearProgress() {
             swiftDB.clearSessions()
         }
 
-
         func restoreDefaults() {
 
-            selectedRange = .x2_x10
-            showCorrectAnswer = true
-
-            hapticFeedback = true
-            soundEffects = false
-            autoStartPractice = true
-
-            dailyGoal = 20
+            appSettings.restoreDefaults()
         }
     }
 }

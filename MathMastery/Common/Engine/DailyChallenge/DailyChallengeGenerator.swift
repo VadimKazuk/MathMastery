@@ -89,11 +89,7 @@ final class DailyChallengeGenerator {
             DailyChallengeDefinition(
                 type: .personalBest,
                 target: 1,
-                mode: [
-                    .speed,
-                    .rush,
-                    .survival
-                ].random(using: &generator),
+                mode: personalBestMode(for: date),
                 metadata: nil
             )
         ]
@@ -101,6 +97,25 @@ final class DailyChallengeGenerator {
         challenges.shuffle(using: &generator)
 
         return Array(challenges.prefix(3))
+    }
+
+    private func personalBestMode(
+        for date: Date
+    ) -> PracticeMode {
+
+        let modes: [PracticeMode] = [
+            .speed,
+            .rush,
+            .survival
+        ]
+
+        let day = Calendar.current.ordinality(
+            of: .day,
+            in: .year,
+            for: date
+        ) ?? 0
+
+        return modes[day % modes.count]
     }
 
     private func recommendedMasteryTable(

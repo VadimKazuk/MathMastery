@@ -1,52 +1,47 @@
 import SwiftUI
 
 struct PracticeModeScreen<Content: View>: View {
-
     enum HeaderAction {
         case close
         case pause
         case exitConfirm
     }
-
-    @Environment(\.dismiss) private var dismiss
-
     @State private var showPauseOverlay = false
-
+    let canChangeTable: Bool
     let title: String
     let headerAction: HeaderAction
-
+    let onBackToTableSelection: () -> Void
     let onPause: () -> Void
     let onResume: () -> Void
     let onRestart: () -> Void
-    let onComplete: () -> Void
     let onBack: () -> Void
-
     let content: Content
 
     init(
         title: String,
+        canChangeTable: Bool = false,
         headerAction: HeaderAction = .close,
+        onBackToTableSelection: @escaping () -> Void = {},
         onPause: @escaping () -> Void = {},
         onResume: @escaping () -> Void = {},
         onRestart: @escaping () -> Void = {},
         onBack: @escaping () -> Void = {},
-        onComplete: @escaping () -> Void,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
+        self.canChangeTable = canChangeTable
         self.headerAction = headerAction
+        self.onBackToTableSelection = onBackToTableSelection
         self.onPause = onPause
         self.onResume = onResume
         self.onRestart = onRestart
         self.onBack = onBack
-        self.onComplete = onComplete
         self.content = content()
     }
 
     var body: some View {
         VStack(spacing: 0) {
             header
-
             ScrollView {
                 VStack(spacing: 24) {
                     content
@@ -60,29 +55,29 @@ struct PracticeModeScreen<Content: View>: View {
         }
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationBarBackButtonHidden(true)
-        .hidesCustomTabBar()
         .overlay {
             if headerAction == .pause || headerAction == .exitConfirm {
                 PauseOverlay(
                     isPresented: $showPauseOverlay,
                     mode: headerAction == .pause ? .pause : .exit,
-
+                    canChangeTable: canChangeTable,
                     onContinue: {
                         showPauseOverlay = false
-
                         if headerAction == .pause {
                             onResume()
                         }
                     },
-
                     onRestart: {
                         showPauseOverlay = false
                         onRestart()
                     },
-
                     onBack: {
                         showPauseOverlay = false
                         onBack()
+                    },
+                    onBackToTableSelection: {
+                        showPauseOverlay = false
+                        onBackToTableSelection()
                     }
                 )
             }
@@ -94,12 +89,10 @@ struct PracticeModeScreen<Content: View>: View {
             Button {
                 switch headerAction {
                 case .close:
-                    dismiss()
-
+                    onBack()
                 case .pause:
                     onPause()
                     showPauseOverlay = true
-
                 case .exitConfirm:
                     showPauseOverlay = true
                 }
@@ -114,20 +107,10 @@ struct PracticeModeScreen<Content: View>: View {
                     }
             }
             .buttonStyle(.plain)
-
             Spacer()
-
             Text(title)
-                .font(
-                    .system(
-                        size: 22,
-                        weight: .bold,
-                        design: .rounded
-                    )
-                )
-
+                .font(.system(size: 22, weight: .bold, design: .rounded))
             Spacer()
-
             Color.clear
                 .frame(width: 42, height: 42)
         }

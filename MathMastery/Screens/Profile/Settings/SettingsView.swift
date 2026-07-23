@@ -9,6 +9,7 @@ struct SettingsView: View {
 
     init(viewModel: ViewModel) {
         self._viewModel = StateObject(wrappedValue: viewModel)
+        
     }
 
     var body: some View {
@@ -23,6 +24,9 @@ struct SettingsView: View {
                     dailyGoalSection
                     dataSection
                     aboutSection
+#if DEBUG
+                    developerSection
+#endif
                 }
                 .background(ScrollViewConfigurator())
                 .padding()
@@ -98,7 +102,7 @@ struct SettingsView: View {
             VStack(spacing: 16) {
                 toggleRow(
                     title: "Haptic Feedback",
-                    value: $viewModel.hapticFeedback,
+                    value: viewModel.hapticFeedbackBinding(),
                     onImage: "ic_haptic_on",
                     offImage: "ic_haptic_off"
                 )
@@ -187,6 +191,22 @@ struct SettingsView: View {
                 }
             }
             .font(.system(size: 16, weight: .regular, design: .rounded))
+        }
+    }
+
+    private var developerSection: some View {
+
+        SettingsCard(title: "Developer") {
+
+            VStack(spacing: 16) {
+
+                toggleRow(
+                    title: "Developer Mode",
+                    value: viewModel.developerMode,
+                    onImage: "ic_power_on",
+                    offImage: "ic_power_off"
+                )
+            }
         }
     }
 

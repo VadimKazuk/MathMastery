@@ -340,7 +340,7 @@ private extension ActivityChartEngine {
             100
 
 
-        case .responseTime:
+        case .averageResponseTime:
 
             let values = sessions.compactMap {
                 $0.averageResponseTime
@@ -351,6 +351,37 @@ private extension ActivityChartEngine {
             }
 
             return values.reduce(0,+) / Double(values.count)
+
+
+        case .fastestResponseTime:
+
+            return sessions
+                .compactMap {
+                    $0.fastestResponseTime
+                }
+                .min() ?? 0
+
+
+        case .answersPerMinute:
+
+            let values = sessions.compactMap {
+                $0.answersPerMinute
+            }
+
+            guard !values.isEmpty else {
+                return 0
+            }
+
+            return values.reduce(0,+) / Double(values.count)
+
+
+        case .duration:
+
+            return Double(
+                sessions.reduce(0) {
+                    $0 + ($1.duration ?? 0)
+                }
+            )
 
 
         case .sessions:
@@ -385,8 +416,17 @@ private extension ActivityChartEngine {
         case .accuracy:
             return "Accuracy"
 
-        case .responseTime:
-            return "Time"
+        case .averageResponseTime:
+            return "Average Time"
+
+        case .fastestResponseTime:
+            return "Fastest Time"
+
+        case .answersPerMinute:
+            return "Answers / Min"
+
+        case .duration:
+            return "Practice Time"
 
         case .sessions:
             return "Sessions"
@@ -406,8 +446,15 @@ private extension ActivityChartEngine {
         case .accuracy:
             return .percent
 
-        case .responseTime:
-            return .time
+        case .averageResponseTime,
+             .fastestResponseTime:
+            return .seconds
+
+        case .duration:
+            return .duration
+
+        case .answersPerMinute:
+            return .number
 
         case .xp:
             return .xp

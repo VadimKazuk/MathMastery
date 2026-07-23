@@ -5,11 +5,21 @@ import Combine
 struct HomeView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
+
     @Binding var selectedTab: ContentContainerView.ContentViewType
 
-    init(viewModel: ViewModel, selectedTab: Binding<ContentContainerView.ContentViewType>) {
+    let onStartPractice: (ImprovementAction) -> Void
+
+    @State private var showChallengeRoulette = false
+
+    init(
+        viewModel: ViewModel,
+        selectedTab: Binding<ContentContainerView.ContentViewType>,
+        onStartPractice: @escaping (ImprovementAction) -> Void
+    ) {
         self._viewModel = StateObject(wrappedValue: viewModel)
         self._selectedTab = selectedTab
+        self.onStartPractice = onStartPractice
     }
 
     var body: some View {
@@ -19,8 +29,18 @@ struct HomeView: View {
                     weeklyMilestoneCard
                     todaySummaryCard
                     dailyChallengeCard
-                    currentTargetCard
+
+                    if viewModel.improvement != nil {
+                        improvementCard
+                            .transition(
+                                .opacity.combined(with: .move(edge: .bottom))
+                            )
+                    }
                 }
+                .animation(
+                    .spring(response: 0.35, dampingFraction: 0.86),
+                    value: viewModel.improvement != nil
+                )
                 .background(ScrollViewConfigurator())
                 .padding(.horizontal, 16)
                 .padding(.top, 22)
@@ -28,10 +48,37 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Color(uiColor: .systemGroupedBackground))
+            .overlay {
+                if showChallengeRoulette {
+                    DailyChallengeRoulette(
+                        isPresented: $showChallengeRoulette,
+                        challenges: viewModel.pendingChallenges
+                    )
+                }
+            }
+            .onChange(of: showChallengeRoulette) { _, isPresented in
+                if !isPresented {
+                    viewModel.applyPendingChallenges()
+                }
+            }
             .onAppear {
                 viewModel.loadProgressData()
             }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: .practiceCompleted
+                )
+            ) { _ in
+                viewModel.loadProgressData()
+            }
         }
+    }
+
+    private func handleImprovement(
+        _ action: ImprovementAction
+    ) {
+        viewModel.startImprovementPractice()
+        onStartPractice(action)
     }
 
     // MARK: - Subviews
@@ -199,32 +246,205 @@ struct HomeView: View {
 
                 Spacer()
 
-                Text("24h REMAINING")
-                    .font(.system(size: 12, weight: .semibold))
+                Text(viewModel.challengeCountdown)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundColor(AppColor.commonAccentBlue)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background {
+                        Capsule()
+                            .fill(AppColor.commonAccentBlue.opacity(0.1))
+                    }
+
             }
 
             ForEach(viewModel.challenges) { challenge in
                 ChallengeRow(challenge: challenge)
             }
 
-#if DEBUG
-            Button {
-                viewModel.generateNextDayChallengesForTest()
-            } label: {
-                Text("Generate Next Day")
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(AppColor.commonAccentBlue.opacity(0.15))
-                    .foregroundColor(AppColor.commonAccentBlue)
-                    .cornerRadius(12)
+            if viewModel.shouldShowNewChallengesButton || viewModel.isDevMode() {
+                CommonButton(
+                    title: "Get New Challenges",
+                    leftImage: "sparkles",
+                    action: {
+                        showChallengeRoulette = true
+                    }
+                )
             }
-#endif
+
+            if viewModel.isDevMode() {
+                Button {
+                    viewModel.generateNextDayChallengesForTest()
+                } label: {
+                    Text("Generate Next Day")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(AppColor.commonAccentBlue.opacity(0.15))
+                        .foregroundColor(AppColor.commonAccentBlue)
+                        .cornerRadius(12)
+                }
+            }
         }
         .padding(20)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(24)
+    }
+
+    private var improvementCard: some View {
+        guard let improvement = viewModel.improvement else {
+            return AnyView(EmptyView())
+        }
+
+        return AnyView(
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .top) {
+                    improvementHeader(for: improvement)
+
+                    Spacer()
+
+                    ZStack {
+                        Image(improvementIconName(for: improvement))
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 30, height: 30)
+                            .id(improvementIconName(for: improvement))
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                    .frame(width: 30, height: 30)
+                    .animation(
+                        .easeOut(duration: 0.25),
+                        value: improvementIconName(for: improvement)
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+
+                    HStack {
+                        Text(improvement.metricTitle)
+
+                        Spacer()
+
+                        Text("\(viewModel.animatedImprovementPercentage)% / \(Int(improvement.targetValue * 100))%")
+                            .fontWeight(.bold)
+                    }
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+
+                            Capsule()
+                                .fill(Color(.systemGray5))
+
+                            Capsule()
+                                .fill(AppColor.commonAccentBlue)
+                                .frame(
+                                    width: geo.size.width * viewModel.animatedImprovementProgress
+                                )
+                        }
+                    }
+                    .frame(height: 8)
+
+                    Text("\(improvement.attempts) attempts • Goal \(Int(improvement.targetValue * 100))% accuracy")
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+
+                Group {
+                    if isPracticeButtonVisible {
+                        CommonButton(
+                            title: "Practice \(improvement.focusTitle)",
+                            action: {
+                                handleImprovement(improvement.action)
+                            }
+                        )
+                    }
+                }
+                .animation(
+                    .spring(response: 0.45, dampingFraction: 0.82),
+                    value: isPracticeButtonVisible
+                )
+
+            }
+            .padding(20)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(24)
+            .shadow(color: Color.black.opacity(0.02), radius: 10, x: 0, y: 5)
+        )
+    }
+
+    private func improvementHeader(
+        for improvement: ImprovementRecommendation
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ZStack(alignment: .leading) {
+                Text(improvementHeaderTitle)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .id(improvementHeaderTitle)
+                    .transition(.opacity)
+            }
+            .frame(height: 19, alignment: .leading)
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: improvementHeaderTitle
+            )
+
+            ZStack(alignment: .leading) {
+                Text(improvementHeaderFocus(for: improvement))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .id(improvementHeaderFocus(for: improvement))
+                    .transition(.opacity)
+            }
+            .frame(height: 33, alignment: .leading)
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: improvementHeaderFocus(for: improvement)
+            )
+        }
+        .frame(height: 58, alignment: .topLeading)
+    }
+
+    private var improvementHeaderTitle: String {
+        switch viewModel.improvementTransition {
+        case .animatingCompletion, .none:
+            return "Continue Improving"
+        case .completed:
+            return "Improved!"
+        case .showingNext:
+            return "New Goal!"
+        }
+    }
+
+    private func improvementHeaderFocus(
+        for improvement: ImprovementRecommendation
+    ) -> String {
+        switch viewModel.improvementTransition {
+        case .animatingCompletion(let table), .completed(let table),
+             .showingNext(let table):
+            return "Focus ×\(table)"
+        case .none:
+            return improvement.focusTitle
+        }
+    }
+
+    private func improvementIconName(
+        for improvement: ImprovementRecommendation
+    ) -> String {
+        isCompletionReward ? "ic_check_milestone" : improvement.type.icon
+    }
+
+    private var isPracticeButtonVisible: Bool {
+        if case .none = viewModel.improvementTransition {
+            return true
+        }
+        return false
+    }
+
+    private var isCompletionReward: Bool {
+        if case .completed = viewModel.improvementTransition {
+            return true
+        }
+        return false
     }
 
 }
@@ -334,7 +554,7 @@ struct SummaryMetric: View {
         VStack(spacing: 5) {
 
             Text(value)
-                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
 
             Text(title)
                 .font(.system(size: 11, weight: .medium))

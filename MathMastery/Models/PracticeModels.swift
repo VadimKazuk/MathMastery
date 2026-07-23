@@ -133,7 +133,7 @@ enum PracticeMode: String, CaseIterable, Identifiable, Hashable, Codable {
 enum PracticeRoute: Hashable {
     case speed
     case focusTableSelection
-    case focusPractice(table: Int?)
+    case focusPractice(table: Int?, canChangeTable: Bool)
     case survival
     case rush
     case result(PracticeSession)

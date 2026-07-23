@@ -7,10 +7,16 @@ struct SpeedPracticeView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
 
     let onComplete: (PracticeSession) -> Void
+    let onExit: () -> Void
 
-    init(viewModel: ViewModel, onComplete: @escaping (PracticeSession) -> Void) {
+    init(
+        viewModel: ViewModel,
+        onComplete: @escaping (PracticeSession) -> Void,
+        onExit: @escaping () -> Void
+    ) {
         self._viewModel = StateObject(wrappedValue: viewModel)
         self.onComplete = onComplete
+        self.onExit = onExit
     }
 
     var body: some View {
@@ -31,28 +37,39 @@ struct SpeedPracticeView: View {
             },
 
             onBack: {
-                dismiss()
-            },
-
-            onComplete: completeSession
+                onExit()
+            }
         ) {
             VStack(spacing: 28) {
+                HStack {
+                    VStack(spacing: 2) {
+                        Text("\(viewModel.currentStreak)")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundColor(.green)
+
+                        Text("STREAK")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    VStack(spacing: 2) {
+                        Text("\(viewModel.solvedCount)")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundColor(AppColor.commonAccentBlue)
+
+                        Text("QUESTION")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 20)
+
                 HStack {
                     Spacer()
                     timerBadge
                 }
-                VStack(spacing: 4) {
-                    Text("QUESTIONS")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .tracking(1.4)
-                        .foregroundColor(.secondary)
-                    Text("\(viewModel.solvedCount)")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(AppColor.commonAccentBlue)
-                    Text("Race against time")
-                        .font(.system(size: 14, design: .rounded))
-                        .foregroundColor(.secondary)
-                }
+                
                 questionCard
                 answerGrid
             }
@@ -97,13 +114,39 @@ struct SpeedPracticeView: View {
 
     private var questionCard: some View {
         VStack(spacing: 20) {
-            Text(viewModel.currentQuestion.title)
-                .font(.system(size: 36, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
+            HStack(spacing: 2) {
+                Text(viewModel.questionExpression)
 
-            ProgressView(value: viewModel.progress)
-                .tint(AppColor.commonAccentBlue)
-                .frame(width: 120)
+                ZStack {
+                    Text("00")
+                        .hidden()
+                        .overlay(alignment: .bottom) {
+                            Rectangle()
+                                .fill(AppColor.commonAccentBlue.opacity(0.16))
+                                .frame(height: 3)
+                                .offset(y: 8)
+                        }
+
+                    VStack {
+//                        ZStack {
+//                            if viewModel.answerResult == .wrong {
+//                                Text("\(viewModel.currentQuestion.answer)")
+//                                    .font(.system(size: 18, weight: .bold, design: .rounded))
+//                                    .foregroundStyle(.green)
+//                                    .padding(.bottom, 45)
+//                            }
+
+                            Text(viewModel.selectedAnswerText)
+                                .foregroundStyle(viewModel.answerTextColor)
+//                        }
+                    }
+                }
+            }
+            .font(.system(size: 36, weight: .bold, design: .rounded))
+
+//                        ProgressView(value: viewModel.progress)
+            //                .tint(AppColor.commonAccentBlue)
+            //                .frame(width: 120)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 138)
@@ -112,6 +155,7 @@ struct SpeedPracticeView: View {
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 6)
         }
+        
     }
 
     private var answerGrid: some View {
@@ -131,16 +175,22 @@ struct SpeedPracticeView: View {
                         .foregroundColor(AppColor.commonAccentBlue)
                         .frame(maxWidth: .infinity)
                         .frame(height: 76)
-                        .background {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(viewModel.backgroundColor(for: option))
-                                .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
-                        }.animation(
+                        .animation(
                             .easeInOut(duration: 0.2),
                             value: option.state
                         )
+
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(
+                    DepthButtonStyle(
+                        backgroundColor: .white,
+                        borderColor: viewModel.backgroundColor(for: option),
+                        borderOpacity: 0.6,
+                        cornerRadius: 14,
+                        depth: 5,
+                        borderWidth: 3
+                    )
+                )
                 .allowsHitTesting(viewModel.isAcceptingAnswers)
             }
         }

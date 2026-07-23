@@ -2,6 +2,8 @@ import SwiftUI
 
 struct DepthButtonStyle: ButtonStyle {
     var backgroundColor: Color = AppColor.commonAccentBlue
+    var borderColor: Color = .black
+    var borderOpacity: Double = 0.08
     var cornerRadius: CGFloat = 20
     var depth: CGFloat = 6
     var borderWidth: CGFloat = 0 // по дефолту без бордера
@@ -14,6 +16,8 @@ struct DepthButtonStyle: ButtonStyle {
         PressableContent(
             configuration: configuration,
             backgroundColor: backgroundColor,
+            borderColor: borderColor,
+            borderOpacity: borderOpacity,
             shadowColor: shadowColor,
             cornerRadius: cornerRadius,
             depth: depth,
@@ -25,6 +29,8 @@ struct DepthButtonStyle: ButtonStyle {
 private struct PressableContent: View {
     let configuration: ButtonStyleConfiguration
     let backgroundColor: Color
+    let borderColor: Color
+    var borderOpacity: Double
     let shadowColor: Color
     let cornerRadius: CGFloat
     let depth: CGFloat
@@ -50,7 +56,7 @@ private struct PressableContent: View {
                             if borderWidth > 0 {
                                 RoundedRectangle(cornerRadius: cornerRadius)
                                     .stroke(
-                                        Color.black.opacity(0.08),
+                                        borderColor.opacity(borderOpacity),
                                         lineWidth: borderWidth
                                     )
                             }

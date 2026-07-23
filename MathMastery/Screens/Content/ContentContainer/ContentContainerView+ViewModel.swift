@@ -6,6 +6,8 @@ extension ContentContainerView {
         @Published var contentViewType: ContentViewType = .home
         private var subscriptions = Set<AnyCancellable>()
 
+        @Published var practiceLaunch: PracticeLaunch?
+
         init(serviceContainer: ServiceContainer) {
 //            let messagingService = serviceContainer.resolve(MessagingService.self)
 //            messagingService.$didReceivePush

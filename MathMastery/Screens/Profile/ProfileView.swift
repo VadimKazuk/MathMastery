@@ -5,6 +5,9 @@ struct ProfileView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
 
+    @State private var showSettings = false
+    @State private var showHistory = false
+
     @State private var selectedSession: PracticeSession?
 
     @AppStorage("lastShownXP") private var lastXP = 0
@@ -31,28 +34,11 @@ struct ProfileView: View {
                     activitySection
                     learningHeatmapSection
                     recentSessionsPreview
-
-
-                    NavigationLink {
-                        HistoryListView(
-                            viewModel: .init(serviceContainer: serviceContainer)
-                        )
-                        .toolbar(.hidden, for: .tabBar)
-                    } label: {
-                        HStack {
-                            Text("View Full History")
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 14, weight: .bold))
-                        }
-                        .foregroundColor(.white)
-                        .frame(height: 42)
-                        .padding(.horizontal, 20)
-                    }
-                    .buttonStyle(DeptButtonStyle())
+                    fullHistory
                 }
                 .background(ScrollViewConfigurator())
                 .padding(16)
+                .padding(.bottom, 100)
             }
             .background(Color(uiColor: .systemGroupedBackground))
             .sheet(item: $selectedSession) { session in
@@ -125,34 +111,54 @@ struct ProfileView: View {
                         viewModel.openGameCenter()
                     } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: "gamecontroller.fill")
+                            Image("ic_controller_regular")
+                                .resizable()
+                                .renderingMode(.template)
+                            //                                .foregroundStyle(.white)
+                                .scaledToFit()
+                                .frame(width: 14, height: 14)
+
                             Text("Game Center")
                         }
                         .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(.blue)
                         .padding(8)
                     }
                     .buttonStyle(
-                        DeptButtonStyle(
-                            backgroundColor: AppColor.commonAccentBlue,
+                        DepthButtonStyle(
+                            backgroundColor: .white,
                             cornerRadius: 6,
-                            depth: 3
+                            depth: 3,
+                            borderWidth: 0.5
                         )
                     )
                 }
 
                 Spacer()
 
-                NavigationLink {
-                    SettingsView(viewModel: .init(serviceContainer: serviceContainer))
-                        .toolbar(.hidden, for: .tabBar)
+                Button {
+                    showSettings = true
                 } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
+                    Image("ic_gear_white")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
                         .frame(width: 60, height: 42)
                 }
-                .buttonStyle(DeptButtonStyle())
+                .buttonStyle(
+                    DepthButtonStyle(
+                        backgroundColor: AppColor.commonAccentBlue,
+                        cornerRadius: 14,
+                        depth: 5,
+                        borderWidth: 1
+                    )
+                )
+                .fullScreenCover(isPresented: $showSettings) {
+                    SettingsView(
+                        viewModel: .init(serviceContainer: serviceContainer)
+                    )
+                    .environmentObject(serviceContainer)
+                }
             }
 
             VStack(spacing: 8) {
@@ -209,36 +215,42 @@ struct ProfileView: View {
     }
 
     private var personalBestsSection: some View {
-        HStack(spacing: 14) {
-            PersonalBestCard(
-                title: "SPEED",
-                mode: .speed,
-                icon: "bolt.fill",
-                iconColor: .orange,
-                session: viewModel.bestSpeed
-            ) {
-                selectedSession = $0
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Personal Best")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                ShimmerTrophy()
             }
 
-            PersonalBestCard(
-                title: "SURVIVAL",
-                mode: .survival,
-                icon: "heart.fill",
-                iconColor: .red,
-                session: viewModel.bestSurvival
-            ) {
-                selectedSession = $0
+            HStack(spacing: 14) {
+                PersonalBestCard(
+                    title: "SPEED",
+                    mode: .speed,
+                    icon: "ic_bolt_yellow",
+                    session: viewModel.bestSpeed
+                ) {
+                    selectedSession = $0
+                }
+
+                PersonalBestCard(
+                    title: "SURVIVAL",
+                    mode: .survival,
+                    icon: "ic_heart_red",
+                    session: viewModel.bestSurvival
+                ) {
+                    selectedSession = $0
+                }
+
+                PersonalBestCard(
+                    title: "RUSH",
+                    mode: .rush,
+                    icon: "ic_flame_orange",
+                    session: viewModel.bestRush
+                ) {
+                    selectedSession = $0
+                }
             }
 
-            PersonalBestCard(
-                title: "RUSH",
-                mode: .rush,
-                icon: "flame.fill",
-                iconColor: .orange,
-                session: viewModel.bestRush
-            ) {
-                selectedSession = $0
-            }
         }
     }
 
@@ -287,7 +299,7 @@ struct ProfileView: View {
                     .foregroundStyle(
                         point.value == 0
                         ? Color(.systemGray6)
-                        : (point.isCurrent ? AppColor.commonAccentBlue : Color(.systemGray4))
+                        : (point.isCurrent ? AppColor.commonAccentBlue : AppColor.commonAccentBlue.opacity(0.3))
                     )
                 }
                 .chartXAxis {
@@ -405,6 +417,21 @@ struct ProfileView: View {
         }
     }
 
+    private var fullHistory: some View {
+        CommonButton(
+            title: "View Full History",
+            rightImage: "chevron.right",
+            action: {
+                showHistory = true
+            }
+        )
+        .frame(width: 200)
+        .fullScreenCover(isPresented: $showHistory) {
+            HistoryListView(viewModel: .init(serviceContainer: serviceContainer))
+                .environmentObject(serviceContainer)
+        }
+    }
+
     private func legendItem(
         color: Color,
         title: String
@@ -438,7 +465,6 @@ struct PersonalBestCard: View {
     let title: String
     let mode: PracticeMode
     let icon: String
-    let iconColor: Color
     let session: PracticeSession?
     var onTap: (PracticeSession) -> Void
 
@@ -449,23 +475,15 @@ struct PersonalBestCard: View {
             }
         } label: {
             VStack(spacing: 8) {
-                //                ZStack {
-
-                //                    HStack {
-                //                        Spacer()
-
-                ShimmerTrophy()
-                    .opacity(session == nil ? 0.25 : 1)
-                //                    }
-                //                }
-                //                .frame(height: 20)
                 HStack(spacing: 2) {
+                    Image(icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 14, height: 14)
+                        .opacity(session != nil ? 1 : 0.5)
                     Text(title)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-                    Image(systemName: icon)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(iconColor)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(session != nil ? .primary : .secondary)
                 }
                 HStack {
                     if let session {
@@ -485,7 +503,6 @@ struct PersonalBestCard: View {
                 }
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
             }
-            .frame(height: 60)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
             .padding(.horizontal, 10)
@@ -494,7 +511,13 @@ struct PersonalBestCard: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 14))
         }
-        .buttonStyle(DeptButtonStyle(backgroundColor: .white, cornerRadius: 14))
+        .buttonStyle(
+            DepthButtonStyle(
+                backgroundColor: .white,
+                cornerRadius: 14,
+                depth: 5,
+                borderWidth: 1)
+        )
         .disabled(session == nil)
     }
 }

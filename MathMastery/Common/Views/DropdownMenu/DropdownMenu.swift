@@ -59,15 +59,16 @@ private extension DropdownMenu {
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
             }
             .font(.system(size: 10, weight: .bold, design: .rounded))
-            .foregroundColor(.white)
+            .foregroundColor(.black)
             .padding(8)
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(
-            DeptButtonStyle(
-                backgroundColor: AppColor.commonAccentBlue,
+            DepthButtonStyle(
+                backgroundColor: .white,
                 cornerRadius: 6,
-                depth: 3
+                depth: 3,
+                borderWidth: 0.5
             )
         )
     }

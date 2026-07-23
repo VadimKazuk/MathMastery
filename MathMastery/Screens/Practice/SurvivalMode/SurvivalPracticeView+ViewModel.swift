@@ -7,6 +7,12 @@ extension SurvivalPracticeView {
         private let accountService: AccountService
         private let swiftDB: SwiftDataService
 
+        private var sessionStartTime: Date?
+        private var sessionEndTime: Date?
+
+        private var responseTimes: [TimeInterval] = []
+        private var questionStartTime = Date()
+
         @Published private(set) var lives = 3
         @Published private(set) var correctCount = 0
         @Published private(set) var survivedCount = 0
@@ -14,14 +20,16 @@ extension SurvivalPracticeView {
         @Published private(set) var currentStreak = 0
         @Published private(set) var longestStreak = 0
 
-        // Стартуем сразу с умной генерации вопроса, поэтому базовый дефолт опускаем
+        @Published private(set) var selectedAnswer: Int?
+        @Published private(set) var answerResult: AnswerResult?
+
         @Published private(set) var currentQuestion = PracticeQuestion(left: 2, right: 2)
         @Published private(set) var answerOptions: [AnswerOption] = []
+        @Published private(set) var answers: [PracticeAnswer] = []
 
         @Published private(set) var isFinished = false
         @Published private(set) var isAcceptingAnswers = true
-
-        @Published private(set) var answers: [PracticeAnswer] = []
+        @Published private(set) var shouldShowResult = false
 
         private var didFinish = false
 
@@ -32,6 +40,69 @@ extension SurvivalPracticeView {
 
             currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
+        }
+
+        var questionExpression: String {
+            "\(currentQuestion.left) × \(currentQuestion.right) = "
+        }
+
+        var selectedAnswerText: String {
+            selectedAnswer.map(String.init) ?? "?"
+        }
+
+        var questionText: String {
+            guard let selectedAnswer else {
+                return "\(currentQuestion.left) × \(currentQuestion.right) = ?"
+            }
+
+            return "\(currentQuestion.left) × \(currentQuestion.right) = \(selectedAnswer)"
+        }
+
+        var answerTextColor: Color {
+            switch answerResult {
+            case .correct:
+                return .green
+
+            case .wrong:
+                return .red
+
+            case .none:
+                return AppColor.commonAccentBlue
+            }
+        }
+
+        private var sessionDuration: Int {
+            guard
+                let start = sessionStartTime,
+                let end = sessionEndTime
+            else {
+                return 0
+            }
+
+            return Int(end.timeIntervalSince(start))
+        }
+
+        private var averageResponseTimeValue: Double {
+            guard !responseTimes.isEmpty else {
+                return 0
+            }
+
+            return responseTimes.reduce(0,+)
+            / Double(responseTimes.count)
+        }
+
+        private var fastestResponseTimeValue: Double {
+            responseTimes.min() ?? 0
+        }
+
+        private var answersPerMinuteValue: Double {
+            guard sessionDuration > 0 else {
+                return 0
+            }
+
+            return Double(survivedCount)
+            / Double(sessionDuration)
+            * 60
         }
 
         // MARK: - Reset
@@ -47,19 +118,31 @@ extension SurvivalPracticeView {
             isAcceptingAnswers = true
             didFinish = false
 
-            // Используем умную генерацию при перезапуске сессии
+            sessionStartTime = Date()
+            sessionEndTime = nil
+            responseTimes.removeAll()
+
+            questionStartTime = Date()
+
             currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
         }
 
         // MARK: - Finish
 
-        func finish() {
+        func finish(showResult: Bool = false) {
             guard !didFinish else { return }
+
             didFinish = true
+
+            sessionEndTime = Date()
 
             isFinished = true
             isAcceptingAnswers = false
+
+            if showResult {
+                shouldShowResult = true
+            }
         }
 
         // MARK: - Answer
@@ -69,9 +152,21 @@ extension SurvivalPracticeView {
             guard isAcceptingAnswers, !isFinished else { return }
 
             isAcceptingAnswers = false
+
+            let responseTime = Date()
+                .timeIntervalSince(questionStartTime)
+
+            responseTimes.append(responseTime)
+
             survivedCount += 1
 
+            selectedAnswer = answer
+
             let isCorrect = answer == currentQuestion.answer
+
+            answerResult = isCorrect
+                ? .correct
+                : .wrong
 
             if let correctIndex = answerOptions.firstIndex(where: { $0.value == currentQuestion.answer }) {
                 answerOptions[correctIndex].state = .correct
@@ -91,13 +186,10 @@ extension SurvivalPracticeView {
         // MARK: - Smart Question Generator Integration
 
         private func makeSmartQuestion() -> PracticeQuestion {
-            // 1. Извлекаем историю всех прошлых ответов из SwiftData
             let allAnswers = swiftDB.fetchSessions().flatMap { $0.answers }
 
-            // 2. Делегируем выбор ячейки общему сервису SmartQuestionGenerator
             let selectedCell = SmartQuestionGenerator.generateSingleCell(allAnswers: allAnswers)
 
-            // 3. Визуальное разнообразие: случайно меняем множители местами (7х8 или 8х7)
             let shouldSwap = Bool.random()
             return PracticeQuestion(
                 left: shouldSwap ? selectedCell.right : selectedCell.left,
@@ -128,26 +220,30 @@ extension SurvivalPracticeView {
             }
 
             if lives <= 0 {
-                isFinished = true
-                isAcceptingAnswers = false
+                finish(showResult: true)
             } else {
-                // Вызываем переиспользованный умный генератор для следующего шага
                 currentQuestion = makeSmartQuestion()
+                questionStartTime = Date()
                 updateAnswerOptions()
                 isAcceptingAnswers = true
             }
+
+            selectedAnswer = nil
+            answerResult = nil
         }
 
         // MARK: - SwiftData
         private func saveSession() -> PracticeSession {
             let session = PracticeSession(
                 mode: .survival,
-                duration: nil,
+                duration: sessionDuration,
                 difficulty: nil,
                 correctAnswers: correctCount,
                 questionsCount: survivedCount,
                 longestStreak: longestStreak,
-                averageResponseTime: nil,
+                averageResponseTime: averageResponseTimeValue,
+                fastestResponseTime: fastestResponseTimeValue,
+                answersPerMinute: answersPerMinuteValue,
                 answers: answers
             )
 
@@ -211,8 +307,8 @@ extension SurvivalPracticeView {
         func backgroundColor(for option: AnswerOption) -> Color {
             switch option.state {
             case .normal: return .white
-            case .correct: return .green.opacity(0.25)
-            case .wrong: return .red.opacity(0.25)
+            case .correct: return .green
+            case .wrong: return .red
             }
         }
     }

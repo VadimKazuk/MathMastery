@@ -6,8 +6,20 @@ struct HomeView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
 
-    init(viewModel: ViewModel) {
+    @Binding var selectedTab: ContentContainerView.ContentViewType
+
+    let onStartPractice: (ImprovementAction) -> Void
+
+    @State private var showChallengeRoulette = false
+
+    init(
+        viewModel: ViewModel,
+        selectedTab: Binding<ContentContainerView.ContentViewType>,
+        onStartPractice: @escaping (ImprovementAction) -> Void
+    ) {
         self._viewModel = StateObject(wrappedValue: viewModel)
+        self._selectedTab = selectedTab
+        self.onStartPractice = onStartPractice
     }
 
     var body: some View {
@@ -15,17 +27,58 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     weeklyMilestoneCard
+                    todaySummaryCard
                     dailyChallengeCard
-                    currentTargetCard
+
+                    if viewModel.improvement != nil {
+                        improvementCard
+                            .transition(
+                                .opacity.combined(with: .move(edge: .bottom))
+                            )
+                    }
                 }
+                .animation(
+                    .spring(response: 0.35, dampingFraction: 0.86),
+                    value: viewModel.improvement != nil
+                )
                 .background(ScrollViewConfigurator())
                 .padding(.horizontal, 16)
                 .padding(.top, 22)
-                .padding(.bottom, 24)
+                .padding(.bottom, 100)
                 .frame(maxWidth: .infinity)
             }
             .background(Color(uiColor: .systemGroupedBackground))
+            .overlay {
+                if showChallengeRoulette {
+                    DailyChallengeRoulette(
+                        isPresented: $showChallengeRoulette,
+                        challenges: viewModel.pendingChallenges
+                    )
+                }
+            }
+            .onChange(of: showChallengeRoulette) { _, isPresented in
+                if !isPresented {
+                    viewModel.applyPendingChallenges()
+                }
+            }
+            .onAppear {
+                viewModel.loadProgressData()
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: .practiceCompleted
+                )
+            ) { _ in
+                viewModel.loadProgressData()
+            }
         }
+    }
+
+    private func handleImprovement(
+        _ action: ImprovementAction
+    ) {
+        viewModel.startImprovementPractice()
+        onStartPractice(action)
     }
 
     // MARK: - Subviews
@@ -37,6 +90,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Weekly Milestone")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
+
                     Text("Keep the momentum going!")
                         .font(.system(size: 15))
                         .foregroundColor(.secondary)
@@ -44,20 +98,21 @@ struct HomeView: View {
 
                 Spacer()
 
-                    VStack(alignment: .center, spacing: 0) {
-                        HStack {
-                            Image(systemName: "flame.fill")
-                                .font(.system(size: 22))
-                                .foregroundColor(.orange)
-                            Text("\(viewModel.streakCount)")
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                                .foregroundColor(.orange)
-                        }
-                        Text("DAY STREAK")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.secondary)
-                    }
+                VStack(alignment: .trailing, spacing: 0) {
 
+                    let streakLevel = viewModel.streakLevel
+
+                    HStack(spacing: 4) {
+                        Image(streakLevel.imageName)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 28, height: 28)
+
+                        Text("\(viewModel.streakCount)")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundColor(streakLevel.color)
+                    }
+                }
             }
 
             HStack {
@@ -71,16 +126,67 @@ struct HomeView: View {
             .padding(.horizontal, 8)
             .frame(maxWidth: .infinity)
 
-            CommonButton(
-                title: "Complete Today's Goal",
-                action: viewModel.resumeSession
-            )
-
+            if !viewModel.hasCompletedToday {
+                CommonButton(
+                    title: "Complete Today's Goal",
+                    action: {
+                        selectedTab = .practice
+                    }
+                )
+            }
         }
         .padding(20)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(24)
         .shadow(color: Color.black.opacity(0.02), radius: 10, x: 0, y: 5)
+    }
+
+    private var todaySummaryCard: some View {
+        VStack(alignment: .center, spacing: 16) {
+            HStack {
+                Text("Today's Progress")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+
+                Spacer()
+
+                Text(viewModel.todayDateText)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(AppColor.commonAccentBlue)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background {
+                        Capsule()
+                            .fill(AppColor.commonAccentBlue.opacity(0.1))
+                    }
+            }
+
+            HStack(spacing: 12) {
+
+                SummaryMetric(
+                    value: "\(viewModel.todaySummary.questions)",
+                    title: "Questions"
+                )
+
+                SummaryMetric(
+                    value: "\(viewModel.todaySummary.accuracy)%",
+                    title: "Accuracy"
+                )
+
+                SummaryMetric(
+                    value: viewModel.todaySummary.formattedTime,
+                    title: "Practice"
+                )
+
+                SummaryMetric(
+                    value: "+\(viewModel.todaySummary.xp)",
+                    title: "XP"
+                )
+            }
+
+        }
+        .padding(20)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(24)
     }
 
     private var currentTargetCard: some View {
@@ -107,9 +213,6 @@ struct HomeView: View {
                     Text("\(Int(viewModel.progressPercent * 100))% Progress")
                         .font(.system(size: 13, weight: .medium))
                     Spacer()
-                    Text("\(viewModel.drillsCompleted)/\(viewModel.totalDrills) Drills")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
                 }
 
                 GeometryReader { geo in
@@ -126,7 +229,7 @@ struct HomeView: View {
             .padding(.vertical, 4)
             CommonButton(
                 title: "Resume Session",
-                action: viewModel.resumeSession
+                action: {}
             )
         }
         .padding(20)
@@ -138,72 +241,212 @@ struct HomeView: View {
     private var dailyChallengeCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Daily Challenge")
+                Text("Daily Challenges")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
+
                 Spacer()
-                Text("24h REMAINING")
-                    .font(.system(size: 12, weight: .semibold))
+
+                Text(viewModel.challengeCountdown)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundColor(AppColor.commonAccentBlue)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background {
+                        Capsule()
+                            .fill(AppColor.commonAccentBlue.opacity(0.1))
+                    }
+
             }
 
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .stroke(Color.green.opacity(0.1), lineWidth: 4)
-                    Circle()
-                        .trim(from: 0, to: 12/20)
-                        .stroke(Color.green, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    Text("12")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(.green)
-                }
-                .frame(width: 44, height: 44)
+            ForEach(viewModel.challenges) { challenge in
+                ChallengeRow(challenge: challenge)
+            }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Solve 20 questions")
-                        .font(.system(size: 15, weight: .semibold))
-                    Text("8 more to reach your daily goal!")
-                        .font(.system(size: 13))
+            if viewModel.shouldShowNewChallengesButton || viewModel.isDevMode() {
+                CommonButton(
+                    title: "Get New Challenges",
+                    leftImage: "sparkles",
+                    action: {
+                        showChallengeRoulette = true
+                    }
+                )
+            }
+
+            if viewModel.isDevMode() {
+                Button {
+                    viewModel.generateNextDayChallengesForTest()
+                } label: {
+                    Text("Generate Next Day")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(AppColor.commonAccentBlue.opacity(0.15))
+                        .foregroundColor(AppColor.commonAccentBlue)
+                        .cornerRadius(12)
+                }
+            }
+        }
+        .padding(20)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(24)
+    }
+
+    private var improvementCard: some View {
+        guard let improvement = viewModel.improvement else {
+            return AnyView(EmptyView())
+        }
+
+        return AnyView(
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .top) {
+                    improvementHeader(for: improvement)
+
+                    Spacer()
+
+                    ZStack {
+                        Image(improvementIconName(for: improvement))
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 30, height: 30)
+                            .id(improvementIconName(for: improvement))
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                    .frame(width: 30, height: 30)
+                    .animation(
+                        .easeOut(duration: 0.25),
+                        value: improvementIconName(for: improvement)
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+
+                    HStack {
+                        Text(improvement.metricTitle)
+
+                        Spacer()
+
+                        Text("\(viewModel.animatedImprovementPercentage)% / \(Int(improvement.targetValue * 100))%")
+                            .fontWeight(.bold)
+                    }
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+
+                            Capsule()
+                                .fill(Color(.systemGray5))
+
+                            Capsule()
+                                .fill(AppColor.commonAccentBlue)
+                                .frame(
+                                    width: geo.size.width * viewModel.animatedImprovementProgress
+                                )
+                        }
+                    }
+                    .frame(height: 8)
+
+                    Text("\(improvement.attempts) attempts • Goal \(Int(improvement.targetValue * 100))% accuracy")
+                        .font(.system(size: 12, design: .rounded))
                         .foregroundColor(.secondary)
                 }
 
-                Spacer()
+                Group {
+                    if isPracticeButtonVisible {
+                        CommonButton(
+                            title: "Practice \(improvement.focusTitle)",
+                            action: {
+                                handleImprovement(improvement.action)
+                            }
+                        )
+                    }
+                }
+                .animation(
+                    .spring(response: 0.45, dampingFraction: 0.82),
+                    value: isPracticeButtonVisible
+                )
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.secondary)
             }
-            .padding()
+            .padding(20)
             .background(Color(.secondarySystemGroupedBackground))
-            .cornerRadius(16)
-        }
+            .cornerRadius(24)
+            .shadow(color: Color.black.opacity(0.02), radius: 10, x: 0, y: 5)
+        )
     }
 
-    private var quickStartSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Quick Start")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-
-            HStack(spacing: 12) {
-                QuickStartButton(title: "1-MIN SPRINT", icon: "timer", color: AppColor.commonAccentBlue)
-                QuickStartButton(title: "RANDOM DRILL", icon: "shuffle", color: .purple)
-                QuickStartButton(title: "Rush MODE", icon: "flame.fill", color: .orange)
+    private func improvementHeader(
+        for improvement: ImprovementRecommendation
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ZStack(alignment: .leading) {
+                Text(improvementHeaderTitle)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .id(improvementHeaderTitle)
+                    .transition(.opacity)
             }
+            .frame(height: 19, alignment: .leading)
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: improvementHeaderTitle
+            )
+
+            ZStack(alignment: .leading) {
+                Text(improvementHeaderFocus(for: improvement))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .id(improvementHeaderFocus(for: improvement))
+                    .transition(.opacity)
+            }
+            .frame(height: 33, alignment: .leading)
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: improvementHeaderFocus(for: improvement)
+            )
+        }
+        .frame(height: 58, alignment: .topLeading)
+    }
+
+    private var improvementHeaderTitle: String {
+        switch viewModel.improvementTransition {
+        case .animatingCompletion, .none:
+            return "Continue Improving"
+        case .completed:
+            return "Improved!"
+        case .showingNext:
+            return "New Goal!"
         }
     }
-}
 
-// MARK: - Supporting Components
+    private func improvementHeaderFocus(
+        for improvement: ImprovementRecommendation
+    ) -> String {
+        switch viewModel.improvementTransition {
+        case .animatingCompletion(let table), .completed(let table),
+             .showingNext(let table):
+            return "Focus ×\(table)"
+        case .none:
+            return improvement.focusTitle
+        }
+    }
 
-enum DayStatus {
-    case completed, current, locked, reward
-}
+    private func improvementIconName(
+        for improvement: ImprovementRecommendation
+    ) -> String {
+        isCompletionReward ? "ic_check_milestone" : improvement.type.icon
+    }
 
-struct WeeklyDay: Identifiable {
-    let id = UUID()
-    let day: String
-    let status: DayStatus
+    private var isPracticeButtonVisible: Bool {
+        if case .none = viewModel.improvementTransition {
+            return true
+        }
+        return false
+    }
+
+    private var isCompletionReward: Bool {
+        if case .completed = viewModel.improvementTransition {
+            return true
+        }
+        return false
+    }
+
 }
 
 struct WeeklyDayView: View {
@@ -217,131 +460,107 @@ struct WeeklyDayView: View {
                 .foregroundColor(textColor)
 
             ZStack {
-                Circle()
-                    .fill(circleBgColor)
-                    .frame(width: 34, height: 34)
-
-                Image(systemName: iconName)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(iconColor)
+                Image(iconName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 22, height: 22)
             }
         }
         .frame(width: 40)
         .padding(.vertical, 8)
         .background(pillBgColor)
         .clipShape(Capsule())
-        .shadow(color: status == .current ? AppColor.commonAccentBlue.opacity(0.25) : .clear, radius: 8, x: 0, y: 4)
     }
 
     private var textColor: Color {
-        switch status {
-        case .completed: return .green
-        case .current: return AppColor.commonAccentBlue
-        case .locked, .reward: return .secondary
-        }
+        status.textColor
     }
 
     private var pillBgColor: Color {
-        switch status {
-        case .completed: return Color.green.opacity(0.06)
-        case .current: return AppColor.commonAccentBlue
-        case .locked, .reward: return Color(.systemGray6).opacity(0.5)
-        }
+        status.pillBackground
     }
 
     private var pillBorderColor: Color {
-        switch status {
-        case .completed: return Color.green.opacity(0.15)
-        default: return Color(.systemGray4).opacity(0.3)
-        }
-    }
-
-    private var circleBgColor: Color {
-        switch status {
-        case .completed: return .green
-        case .current: return .white
-        case .locked, .reward: return Color(.systemGray5)
-        }
-    }
-
-    private var iconColor: Color {
-        switch status {
-        case .completed: return .white
-        case .current: return AppColor.commonAccentBlue
-        case .locked, .reward: return .secondary
-        }
+        status.pillBorder
     }
 
     private var iconName: String {
-        switch status {
-        case .completed: return "checkmark"
-        case .current: return "star.fill"
-        case .locked: return "lock.fill"
-        case .reward: return "trophy.fill"
-        }
+        status.iconName
+    }
+
+    private var iconColor: Color {
+        status.iconColor
     }
 }
 
-struct QuickStartButton: View {
-    let title: String
-    let icon: String
-    let color: Color
-    var isBordered: Bool = false
-
-    @State private var scale = 1.0
+struct ChallengeRow: View {
+    let challenge: DailyChallenge
 
     var body: some View {
-        Button(action: {}) {
-            VStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 20))
-                    .foregroundColor(color)
-                    .frame(width: 40, height: 40)
-                    .background(isBordered ? Color.clear : color.opacity(0.1))
-                    .clipShape(Circle())
-
-                Text(title)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.center)
+        HStack(spacing: 16) {
+            ProgressRing(
+                progress: challenge.progress,
+                color: challenge.color,
+                lineWidth: 4,
+                animated: challenge.shouldAnimate
+            ) {
+                if challenge.isCompleted {
+                    Image(challenge.checkmark)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
+                } else {
+                    Text("\(challenge.current)")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(challenge.color)
+                }
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 100)
-            .background(Color(.secondarySystemGroupedBackground))
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isBordered ? color.opacity(0.3) : Color.clear, lineWidth: 1)
-            )
+            .frame(width: 44, height: 44)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Image(challenge.icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 15, height: 15)
+
+                    Text(challenge.title)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                }
+
+                Text(challenge.subtitle)
+                    .font(.system(size: 13, design: .rounded))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Text("\(challenge.current)/\(challenge.target)")
+                .font(.system(size: 13, design: .rounded))
+                .foregroundColor(.secondary)
         }
+        .padding(3)
+        .background(Color(.systemBackground))
+        .cornerRadius(16)
     }
 }
 
-struct BounceOnTap: ViewModifier {
-    @State private var scale: CGFloat = 1
+struct SummaryMetric: View {
 
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(scale)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in
-                        guard scale == 1 else { return }
-                        withAnimation(.easeOut(duration: 0.08)) {
-                            scale = 0.94
-                        }
-                    }
-                    .onEnded { _ in
-                        withAnimation(.spring(response: 0.22, dampingFraction: 0.45)) {
-                            scale = 1.05
-                        }
+    let value: String
+    let title: String
 
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            withAnimation(.spring(response: 0.2, dampingFraction: 0.75)) {
-                                scale = 1
-                            }
-                        }
-                    }
-            )
+    var body: some View {
+        VStack(spacing: 5) {
+
+            Text(value)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+
+        }
+        .frame(maxWidth: .infinity)
     }
 }

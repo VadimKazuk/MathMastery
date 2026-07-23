@@ -16,42 +16,40 @@ final class DefaultServiceContainer: ServiceContainer {
             Future<Bool, Never> { [weak self] promise in
                 let storageService = UserDefaultsStorageService()
 
-                let accountService = AccountService(storageService: storageService)
                 self?.register(
                     type: AccountService.self,
-                    as: .singleton,
-                    factory: accountService
-                )
+                    as: .singleton
+                ) {
+                    AccountService(storageService: storageService)
+                }
+
+                self?.register(
+                    type: AppSettingsManager.self,
+                    as: .singleton
+                ) {
+                    AppSettingsManager()
+                }
 
                 self?.register(
                     type: KeychainService.self,
-                    as: .singleton,
-                    factory: KeychainManager()
-                )
+                    as: .singleton
+                ) {
+                    KeychainManager()
+                }
 
                 self?.register(
                     type: GameCenterServiceProtocol.self,
-                    as: .singleton,
-                    factory: GameCenterService()
-                )
-
-//                self?.register(
-//                    type: ToastManager.self,
-//                    as: .singleton,
-//                    factory: ToastManager()
-//                )
-//
-//                self?.register(
-//                    type: ProgressManager.self,
-//                    as: .singleton,
-//                    factory: ProgressManager()
-//                )
+                    as: .singleton
+                ) {
+                    GameCenterService()
+                }
 
                 self?.register(
                     type: SwiftDataService.self,
-                    as: .singleton,
-                    factory: SwiftDataManager()
-                )
+                    as: .singleton
+                ) {
+                    SwiftDataManager()
+                }
 
                 promise(.success(true))
             }

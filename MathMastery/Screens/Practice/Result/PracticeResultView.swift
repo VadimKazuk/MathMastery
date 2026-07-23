@@ -7,18 +7,18 @@ struct PracticeResultView: View {
 
     let retryAction: (() -> Void)?
     let switchModeAction: (() -> Void)?
-    let hubAction: (() -> Void)?
+    let closeAction: (() -> Void)?
 
     init(
         viewModel: ViewModel,
         retryAction: (() -> Void)? = nil,
         switchModeAction: (() -> Void)? = nil,
-        hubAction: (() -> Void)? = nil
+        closeAction: (() -> Void)? = nil
     ) {
         self._viewModel = StateObject(wrappedValue: viewModel)
         self.retryAction = retryAction
         self.switchModeAction = switchModeAction
-        self.hubAction = hubAction
+        self.closeAction = closeAction
     }
 
     var body: some View {
@@ -35,60 +35,52 @@ struct PracticeResultView: View {
         }
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        //        .hidesCustomTabBar()
     }
 
     private var hero: some View {
         VStack(spacing: 20) {
-            if viewModel.isPersonalBest {
-                HStack {
-                    Spacer()
-
-                    ShimmerTrophy(size: 20)
-                        .padding(.trailing, 30)
-                }
-             }
-            // Круговой индикатор точности с иконкой режима прямо внутри него
-            ZStack {
-                Circle()
-                    .stroke(viewModel.session.mode.accentColor.opacity(0.1), lineWidth: 8)
-
-                Circle()
-                    .trim(from: 0, to: animatedAccuracy) // Анимируем это свойство
-                    .stroke(
-                        viewModel.session.mode.accentColor,
-                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-
-                // Иконка режима по центру круга
-                Image(systemName: viewModel.session.mode.systemImage)
-                    .font(.system(size: 32, weight: .semibold))
-                    .foregroundColor(viewModel.session.mode.accentColor)
+            ProgressRing(
+                progress: CGFloat(viewModel.session.accuracy) / 100,
+                color: viewModel.session.mode.accentColor,
+                lineWidth: 8
+            ) {
+                Image(viewModel.session.mode.icImageSized)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 42, height: 42)
             }
             .frame(width: 92, height: 92)
             .overlay(alignment: .bottomTrailing) {
-                // Маленький бейдж с процентами
-                Text("\(viewModel.session.accuracy)%")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(viewModel.session.mode.accentColor)
-                    .clipShape(Capsule())
-                    .offset(x: 4, y: 4)
-                    // Появление бейджа тоже можно мягко проявить после анимации круга
-                    .opacity(animatedAccuracy > 0 ? 1 : 0)
-                    .animation(.easeIn(duration: 0.2).delay(0.5), value: animatedAccuracy)
-            }
+                ZStack {
+                    // Нижняя грань (depth)
+                    Text("\(viewModel.session.accuracy)%")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(viewModel.session.mode.accentColor.darker(by: 0.3))
+                        .clipShape(Capsule())
+                        .offset(x: -1, y: 1.5)
 
-            // Текстовый блок
+                    // Верхняя поверхность
+                    Text("\(viewModel.session.accuracy)%")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(viewModel.session.mode.accentColor)
+                        .clipShape(Capsule())
+                }
+                .offset(x: 7, y: -5)
+                .opacity(animatedAccuracy > 0 ? 1 : 0)
+                .animation(.easeIn(duration: 0.2).delay(0.5), value: animatedAccuracy)
+            }
             VStack(spacing: 8) {
                 Text(viewModel.title)
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
-
                 Text(viewModel.summary)
                     .font(.system(size: 17, weight: .regular, design: .rounded))
                     .foregroundColor(Color.primary.opacity(0.68))
@@ -97,12 +89,35 @@ struct PracticeResultView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 30)
+        .padding(.top, 10)
         .background {
             RoundedRectangle(cornerRadius: 24)
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 5)
         }
-        // 3. Триггер запуска анимации при появлении
+        .overlay(alignment: .topTrailing) {
+            if viewModel.isPersonalBest {
+                ShimmerTrophy(size: 40)
+                    .padding(.trailing, 20)
+                    .padding(.top, 20)
+            }
+        }
+        .overlay(alignment: .topLeading) {
+            if let closeAction {
+                Button(action: closeAction) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundColor(.primary)
+                        .frame(width: 42, height: 42)
+                        .background(
+                            Circle().fill(Color.white)
+                        )
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 10)
+                .padding(.leading, 10)
+            }
+        }
         .onAppear {
             withAnimation(.interactiveSpring(response: 1.0, dampingFraction: 0.75, blendDuration: 0.5)) {
                 animatedAccuracy = CGFloat(viewModel.session.accuracy) / 100.0
@@ -212,16 +227,6 @@ struct PracticeResultView: View {
                 .buttonStyle(.plain)
             }
 
-            if let hubAction {
-                Button(action: hubAction) {
-                    Text("Return to Practice Hub")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.primary.opacity(0.68))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                }
-                .buttonStyle(.plain)
-            }
         }
     }
 }

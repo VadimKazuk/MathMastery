@@ -20,12 +20,14 @@ class ServiceContainer: ObservableObject {
     func register<Service>(
         type: Service.Type,
         as serviceType: ServiceType = .automatic,
-        factory: @autoclosure @escaping () -> Service
+        factory: @escaping () -> Service
     ) {
-        servicesFactories[String(describing: type.self)] = factory
+        let key = String(describing: type.self)
+
+        servicesFactories[key] = factory
 
         if serviceType == .singleton {
-            servicesCache[String(describing: type.self)] = factory()
+            servicesCache[key] = factory()
         }
     }
 
@@ -33,29 +35,36 @@ class ServiceContainer: ObservableObject {
         dependencyType: ServiceType = .automatic,
         _ type: Service.Type
     ) -> Service {
+
         let key = String(describing: type.self)
+
         switch dependencyType {
+
         case .singleton:
-            if let cachedService = servicesCache[key] as? Service {
-                return cachedService
-            } else {
-                fatalError("\(String(describing: type.self)) is not registered as singleton")
+            guard let service = servicesCache[key] as? Service else {
+                fatalError("\(key) is not registered as singleton")
             }
+
+            return service
 
         case .automatic:
             if let cachedService = servicesCache[key] as? Service {
                 return cachedService
             }
 
-            fallthrough
+            guard let service = servicesFactories[key]?() as? Service else {
+                fatalError("\(key) don't have factory")
+            }
+
+            servicesCache[key] = service
+            return service
 
         case .newInstance:
-            if let service = servicesFactories[key]?() as? Service {
-                servicesCache[String(describing: type.self)] = service
-                return service
-            } else {
-                fatalError("\(String(describing: type.self)) don't have factory for creation")
+            guard let service = servicesFactories[key]?() as? Service else {
+                fatalError("\(key) don't have factory")
             }
+
+            return service
         }
     }
 }

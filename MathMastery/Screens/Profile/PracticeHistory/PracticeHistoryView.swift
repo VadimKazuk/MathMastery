@@ -4,56 +4,86 @@ struct HistoryListView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @StateObject var viewModel: ViewModel
     @State private var selectedSession: PracticeSession?
-    
+
+    @Environment(\.dismiss) private var dismiss
+
     init(viewModel: ViewModel) {
         self._viewModel = StateObject(wrappedValue: viewModel)
     }
     
     var body: some View {
-        
-        ScrollView {
-            VStack(spacing: 14) {
-                if viewModel.sessions.isEmpty {
-                    ContentUnavailableView(
-                        "No sessions yet",
-                        systemImage: "clock.arrow.circlepath",
-                        description: Text("Complete your first practice session")
-                    )
-                } else {
-                    ForEach(viewModel.sessions, id: \.id) { session in
-                        HistoryRow(
-                            session: session,
-                            isPersonalBest: viewModel.isBest(session)
-                        ) { _ in
-                            selectedSession = session
+        VStack(spacing: 0) {
+
+            header
+
+            ScrollView {
+                VStack(spacing: 14) {
+                    if viewModel.sessions.isEmpty {
+                        ContentUnavailableView(
+                            "No sessions yet",
+                            systemImage: "clock.arrow.circlepath",
+                            description: Text("Complete your first practice session")
+                        )
+                    } else {
+                        ForEach(viewModel.sessions, id: \.id) { session in
+                            HistoryRow(
+                                session: session,
+                                isPersonalBest: viewModel.isBest(session)
+                            ) { _ in
+                                selectedSession = session
+                            }
                         }
                     }
                 }
+                .padding(16)
+                .padding(.bottom, 30)
             }
-            .padding(16)
         }
         .background(Color(uiColor: .systemGroupedBackground))
-        .navigationTitle("History")
         .sheet(item: $selectedSession) { session in
             PracticeResultView(
                 viewModel: .init(
                     serviceContainer: serviceContainer,
                     session: session,
-                    isPersonalBest: viewModel.isBest(session))
+                    isPersonalBest: viewModel.isBest(session)
+                )
             )
         }
-        //            .navigationDestination(for: PracticeSession.self) { session in
-        //                PracticeResultView(
-        //                    viewModel: .init(serviceContainer: serviceContainer, session: session),
-        //                    retryAction: {  },
-        //                    switchModeAction: {  },
-        //                    hubAction: {  }
-        //                )
-        //            }
-        
         .task {
             viewModel.loadSessions()
         }
+    }
+
+    private var header: some View {
+        HStack {
+
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(.primary)
+                    .frame(width: 42, height: 42)
+                    .background(
+                        Circle()
+                            .fill(Color.white)
+                    )
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Text("History")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+
+            Spacer()
+
+            Color.clear
+                .frame(width: 42, height: 42)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
     }
 }
 
@@ -74,21 +104,11 @@ struct HistoryRow: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .stroke(session.mode.accentColor.opacity(0.1), lineWidth: 4)
-
-                Circle()
-                    .trim(from: 0, to: CGFloat(session.accuracy) / 100.0)
-                    .stroke(
-                        session.mode.accentColor,
-                        style: StrokeStyle(
-                            lineWidth: 4,
-                            lineCap: .round
-                        )
-                    )
-                    .rotationEffect(.degrees(-90))
-
+            ProgressRing(
+                progress: CGFloat(session.accuracy) / 100,
+                color: session.mode.accentColor,
+                lineWidth: 4
+            ) {
                 Text("\(session.accuracy)%")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundColor(session.mode.accentColor)
@@ -97,9 +117,10 @@ struct HistoryRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Image(systemName: session.mode.systemImage)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(session.mode.accentColor)
+                    Image(session.mode.icImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
 
                     Text(headerText)
                         .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -144,12 +165,15 @@ struct HistoryRow: View {
             Button {
                 onTap?(session)
             } label: {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 42, height: 32)
+                HStack {
+                    Image("ic_tap_finger_white")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                }
+                .frame(width: 42, height: 32)
             }
-            .buttonStyle(DeptButtonStyle())
+            .buttonStyle(DepthButtonStyle())
         }
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground))

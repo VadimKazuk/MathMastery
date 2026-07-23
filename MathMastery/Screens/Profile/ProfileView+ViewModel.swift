@@ -16,8 +16,8 @@ extension ProfileView {
 
         // Вычисляемые общие статистики
         @Published var overallAccuracy: Int = 0
-        @Published var overallAverageTime: Double = 0.0
-        @Published var fastestTime: Double = 0.0
+        @Published var overallAverageResponseTime: Double = 0.0
+        @Published var fastestResponseTime: Double = 0.0
         @Published var totalSessions: Int = 0
 
         @Published private(set) var bestSpeed: PracticeSession?
@@ -48,6 +48,7 @@ extension ProfileView {
         
         private let chartEngine = ActivityChartEngine()
         private let learnEngine = LearnEngine()
+        private let personalBestEngine = PersonalBestEngine()
 
         private var cancellables = Set<AnyCancellable>()
 
@@ -61,8 +62,12 @@ extension ProfileView {
             case .accuracy:
                 return 0...100
 
-            case .responseTime:
+            case .averageResponseTime,
+                 .fastestResponseTime:
                 return 0...max(10, ceil(maxValue + 1))
+
+            case .duration:
+                return 0...max(300, ceil(maxValue + 60))
 
             default:
                 let step = max(5, ceil(maxValue * 0.2))
@@ -220,8 +225,14 @@ extension ProfileView {
                 let percent = Int(value)
                 return String(format: "%3d%%", percent)
 
-            case .responseTime:
-                return String(format: "%5.1f", value)
+            case .averageResponseTime,
+                 .fastestResponseTime:
+                return String(format: "%.2fs", value)
+
+            case .duration:
+                let minutes = Int(value / 60)
+                let seconds = Int(value.truncatingRemainder(dividingBy: 60))
+                return "\(minutes)m \(seconds)s"
 
             case .xp:
                 if value >= 1000 {
@@ -262,8 +273,8 @@ extension ProfileView {
         private func calculateOverallStats() {
             guard !sessions.isEmpty else {
                 overallAccuracy = 0
-                overallAverageTime = 0
-                fastestTime = 0
+                overallAverageResponseTime = 0
+                fastestResponseTime = 0
                 totalSessions = 0
                 return
             }
@@ -274,51 +285,42 @@ extension ProfileView {
             let totalQuestions = sessions.reduce(0) { $0 + $1.questionsCount }
             overallAccuracy = totalQuestions > 0 ? Int(round(Double(totalCorrect) / Double(totalQuestions) * 100)) : 0
 
-            let sessionsWithTime = sessions.compactMap { $0.averageResponseTime }
-            if !sessionsWithTime.isEmpty {
-                overallAverageTime = sessionsWithTime.reduce(0, +) / Double(sessionsWithTime.count)
-            } else {
-                overallAverageTime = 0
+            let averageTimes = sessions.compactMap {
+                $0.averageResponseTime
             }
 
-            fastestTime = sessions.compactMap { $0.averageResponseTime }
-                .min() ?? 0.0
+            overallAverageResponseTime = averageTimes.isEmpty
+            ? 0
+            : averageTimes.reduce(0, +) / Double(averageTimes.count)
+
+
+            fastestResponseTime = sessions.compactMap {
+                $0.fastestResponseTime
+            }
+            .min() ?? 0
         }
 
         private func calculatePersonalBests() {
-            bestSpeed = bestSession(for: .speed)
-            bestFocus = bestSession(for: .focus)
-            bestSurvival = bestSession(for: .survival)
-            bestRush = bestSession(for: .rush)
-        }
 
-        private func bestSession(for mode: PracticeMode) -> PracticeSession? {
-            let filtered = sessions.filter {
-                $0.mode == mode
-            }
+            bestSpeed = personalBestEngine.bestSession(
+                for: .speed,
+                sessions: sessions
+            )
 
-            guard !filtered.isEmpty else {
-                return nil
-            }
+            bestFocus = personalBestEngine.bestSession(
+                for: .focus,
+                sessions: sessions
+            )
 
-            switch mode {
+            bestSurvival = personalBestEngine.bestSession(
+                for: .survival,
+                sessions: sessions
+            )
 
-            case .speed:
-                return filtered.min {
-                    ($0.averageResponseTime ?? .infinity)
-                    <
-                    ($1.averageResponseTime ?? .infinity)
-                }
-
-            case .survival, .rush, .focus:
-                return filtered.max {
-                    if $0.correctAnswers == $1.correctAnswers {
-                        return $0.accuracy < $1.accuracy
-                    }
-
-                    return $0.correctAnswers < $1.correctAnswers
-                }
-            }
+            bestRush = personalBestEngine.bestSession(
+                for: .rush,
+                sessions: sessions
+            )
         }
 
         private func setupChartBindings() {

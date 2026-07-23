@@ -3,13 +3,15 @@ import SwiftUI
 struct ShimmerTrophy: View {
     @State private var animate = false
 
-    var size: CGFloat = 12
-    let img = "trophy.fill"
+    var size: CGFloat = 16
+    let img = "ic_bage_first"
+    let imgSized = "ic_bage_first_sized"
 
     var body: some View {
-        Image(systemName: img)
-            .font(.system(size: size, weight: .bold))
-            .foregroundColor(.yellow)
+        Image(size == 16 ? img : imgSized)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
             .overlay {
                 LinearGradient(
                     colors: [
@@ -23,8 +25,10 @@ struct ShimmerTrophy: View {
                 .rotationEffect(.degrees(20))
                 .offset(x: animate ? 60 : -60)
                 .mask {
-                    Image(systemName: img)
-                        .font(.system(size: size, weight: .bold))
+                    Image(size == 16 ? img : imgSized)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: size, height: size)
                 }
             }
             .onAppear {

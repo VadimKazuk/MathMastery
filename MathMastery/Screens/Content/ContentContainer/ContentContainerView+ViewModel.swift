@@ -4,12 +4,11 @@ import Foundation
 extension ContentContainerView {
     final class ViewModel: ObservableObject {
         @Published var contentViewType: ContentViewType = .home
-
         private var subscriptions = Set<AnyCancellable>()
 
-        init(serviceContainer: ServiceContainer) {
-            self.contentViewType = contentViewType
+        @Published var practiceLaunch: PracticeLaunch?
 
+        init(serviceContainer: ServiceContainer) {
 //            let messagingService = serviceContainer.resolve(MessagingService.self)
 //            messagingService.$didReceivePush
 //                .receive(on: DispatchQueue.main)

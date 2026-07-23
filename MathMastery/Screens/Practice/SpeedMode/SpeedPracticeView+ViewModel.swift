@@ -4,10 +4,13 @@ import SwiftData
 
 extension SpeedPracticeView {
     final class ViewModel: ObservableObject {
+
         private let serviceContainer: ServiceContainer
         private let accountService: AccountService
 
-        @Published private(set) var secondsRemaining = sessionDuration
+        private let countdownTimer = CountdownTimer()
+
+        @Published private(set) var secondsRemaining = timeLimit
         @Published private(set) var solvedCount = 0
         @Published private(set) var correctCount = 0
         @Published private(set) var bestStreak = 0
@@ -20,21 +23,28 @@ extension SpeedPracticeView {
         @Published private(set) var isFinished = false
         @Published private(set) var isAcceptingAnswers = false
         @Published private(set) var blinkToggle = false
-
         @Published private(set) var didComplete = false
-        @Published private(set) var countdownValue: Int?
+        @Published private(set) var shouldShowResult = false
+
+        @Published private(set) var selectedAnswer: Int?
+        @Published private(set) var answerResult: AnswerResult?
 
         @Published private(set) var answers: [PracticeAnswer] = []
 
-        private static let sessionDuration = 17
+        private var wasCountdown = false
+        private var isPaused = false
+        private static let timeLimit = 17
 
         private var questionStartTime = Date()
         private var responseTimes: [TimeInterval] = []
         private var averageResponseTime: Double = 0.0
+        private var sessionStartTime: Date?
+        private var sessionEndTime: Date?
 
         private var timerCancellable: AnyCancellable?
-        private var countdownCancellable: AnyCancellable?
         private var blinkCancellable: AnyCancellable?
+
+        private var subscriptions = Set<AnyCancellable>()
 
         private let swiftDB: SwiftDataService
 
@@ -43,8 +53,80 @@ extension SpeedPracticeView {
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
             self.accountService = serviceContainer.resolve(AccountService.self)
 
-            self.currentQuestion = makeSmartQuestion()
+            countdownTimer.$text
+                .sink { [weak self] _ in
+                    self?.objectWillChange.send()
+                }
+                .store(in: &subscriptions)
+
+            currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
+        }
+
+        var questionExpression: String {
+            "\(currentQuestion.left) × \(currentQuestion.right) = "
+        }
+
+        var selectedAnswerText: String {
+            selectedAnswer.map(String.init) ?? "?"
+        }
+
+        var questionText: String {
+            guard let selectedAnswer else {
+                return "\(currentQuestion.left) × \(currentQuestion.right) = ?"
+            }
+
+            return "\(currentQuestion.left) × \(currentQuestion.right) = \(selectedAnswer)"
+        }
+        
+        var answerTextColor: Color {
+            switch answerResult {
+            case .correct:
+                return .green
+
+            case .wrong:
+                return .red
+
+            case .none:
+                return AppColor.commonAccentBlue
+            }
+        }
+
+        private var sessionDuration: Int {
+            guard
+                let start = sessionStartTime,
+                let end = sessionEndTime
+            else {
+                return 0
+            }
+
+            return Int(end.timeIntervalSince(start))
+        }
+
+        var fastestResponseTimeValue: Double {
+            responseTimes.min() ?? 0
+        }
+
+        var answersPerMinuteValue: Double {
+
+            guard
+                let start = sessionStartTime,
+                let end = sessionEndTime
+            else {
+                return 0
+            }
+
+            let duration = end.timeIntervalSince(start)
+
+            guard duration > 0 else {
+                return 0
+            }
+
+            return Double(solvedCount) / duration * 60
+        }
+
+        var countdownValue: String? {
+            countdownTimer.text
         }
 
         var isWarningPhase: Bool {
@@ -62,7 +144,7 @@ extension SpeedPracticeView {
         }
 
         var progress: Double {
-            Double(secondsRemaining) / Double(Self.sessionDuration)
+            Double(secondsRemaining) / Double(Self.timeLimit)
         }
 
         var averageResponseTimeValue: Double {
@@ -82,25 +164,37 @@ extension SpeedPracticeView {
                 : .red.opacity(0.4)
         }
 
-        func finish() {
+        func finish(showResult: Bool = false) {
+
             guard !didComplete else { return }
+
             didComplete = true
 
-            countdownCancellable?.cancel()
-            countdownCancellable = nil
-            countdownValue = nil
+            sessionEndTime = Date()
 
-            guard !isFinished else { return }
+            countdownTimer.stop()
 
             isAcceptingAnswers = false
             isFinished = true
+
+            if showResult {
+                shouldShowResult = true
+            }
+
             stopTimer()
         }
 
         private func resetSession() {
             stopTimer()
 
-            secondsRemaining = Self.sessionDuration
+            isPaused = false
+
+            responseTimes = []
+            sessionStartTime = nil
+            sessionEndTime = nil
+
+            didComplete = false
+            secondsRemaining = Self.timeLimit
             solvedCount = 0
             correctCount = 0
             bestStreak = 0
@@ -113,6 +207,42 @@ extension SpeedPracticeView {
 
             currentQuestion = makeSmartQuestion()
             updateAnswerOptions()
+        }
+
+        func pause() {
+            guard !isPaused else { return }
+
+            isPaused = true
+            isAcceptingAnswers = false
+
+            wasCountdown = countdownTimer.text != nil
+
+            timerCancellable?.cancel()
+            timerCancellable = nil
+
+            countdownTimer.stop()
+        }
+
+        func resume() {
+            guard isPaused else { return }
+
+            isPaused = false
+
+            if wasCountdown {
+                beginCountdown()
+            } else {
+                startTimer()
+            }
+        }
+
+        func restart() {
+            shouldShowResult = false
+            didComplete = false
+            isFinished = false
+            isPaused = false
+
+            resetSession()
+            beginCountdown()
         }
 
         private func startBlinking() {
@@ -133,7 +263,14 @@ extension SpeedPracticeView {
         }
 
         private func startTimer() {
+            guard !isPaused else { return }
             guard timerCancellable == nil, !isFinished else { return }
+
+            if sessionStartTime == nil {
+                sessionStartTime = Date()
+            }
+
+            questionStartTime = Date()
 
             isAcceptingAnswers = true
 
@@ -146,17 +283,13 @@ extension SpeedPracticeView {
         }
 
         func stopTimer() {
-            countdownCancellable?.cancel()
-            countdownCancellable = nil
+            countdownTimer.stop()
 
             timerCancellable?.cancel()
             timerCancellable = nil
         }
 
         func beginCountdown() {
-            countdownCancellable?.cancel()
-            countdownCancellable = nil
-
             if isFinished {
                 didComplete = false
                 resetSession()
@@ -164,23 +297,14 @@ extension SpeedPracticeView {
 
             guard !isAcceptingAnswers else { return }
 
-            countdownValue = 3
+            countdownTimer.start(from: 3) { [weak self] in
+                guard let self else { return }
 
-            countdownCancellable = Timer
-                .publish(every: 1, on: .main, in: .common)
-                .autoconnect()
-                .sink { [weak self] _ in
-                    guard let self else { return }
-
-                    if let value = countdownValue, value > 1 {
-                        countdownValue = value - 1
-                    } else {
-                        countdownValue = nil
-                        countdownCancellable?.cancel()
-                        countdownCancellable = nil
-                        startTimer()
-                    }
+                DispatchQueue.main.async {
+                    guard !self.isPaused else { return }
+                    self.startTimer()
                 }
+            }
         }
 
         @MainActor
@@ -192,7 +316,13 @@ extension SpeedPracticeView {
 
             isAcceptingAnswers = false
 
+            selectedAnswer = answer
+
             let isCorrect = answer == currentQuestion.answer
+
+            answerResult = isCorrect
+                ? .correct
+                : .wrong
 
             answers.append(
                 PracticeAnswer(
@@ -214,7 +344,7 @@ extension SpeedPracticeView {
             }
 
             Task {
-                try? await Task.sleep(for: .milliseconds(400))
+                try? await Task.sleep(for: .milliseconds(500))
                 advance(answer)
             }
         }
@@ -231,6 +361,9 @@ extension SpeedPracticeView {
             }
 
             questionIndex += 1
+
+            selectedAnswer = nil
+            answerResult = nil
 
             currentQuestion = makeSmartQuestion()
             questionStartTime = Date()
@@ -258,12 +391,9 @@ extension SpeedPracticeView {
 
         func backgroundColor(for option: AnswerOption) -> Color {
             switch option.state {
-            case .normal:
-                return .white
-            case .correct:
-                return .green.opacity(0.25)
-            case .wrong:
-                return .red.opacity(0.25)
+            case .normal: return .white
+            case .correct: return .green
+            case .wrong: return .red
             }
         }
 
@@ -284,7 +414,7 @@ extension SpeedPracticeView {
             }
 
             if secondsRemaining == 0 {
-                finish()
+                finish(showResult: true)
             }
         }
 
@@ -332,11 +462,13 @@ extension SpeedPracticeView {
         func saveSession() -> PracticeSession {
             let session = PracticeSession(
                 mode: .speed,
-                duration: Self.sessionDuration,
+                duration: sessionDuration,
                 correctAnswers: correctCount,
                 questionsCount: solvedCount,
                 longestStreak: bestStreak,
-                averageResponseTime: averageResponseTimeValue
+                averageResponseTime: averageResponseTimeValue,
+                fastestResponseTime: fastestResponseTimeValue,
+                answersPerMinute: answersPerMinuteValue
             )
 
             answers.forEach {

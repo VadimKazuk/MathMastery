@@ -100,7 +100,7 @@ extension LearnView {
 
             let s = stats(for: row, col)
 
-            return CellEngine.level(
+            return CellLevelCalculator.level(
                 correct: s.correct,
                 total: s.total
             )

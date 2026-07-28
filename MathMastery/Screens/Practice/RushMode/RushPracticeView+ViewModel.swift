@@ -8,26 +8,33 @@ extension RushPracticeView {
         private let accountService: AccountService
         private let swiftDB: SwiftDataService
 
+        private let adaptiveQuestionEngine = AdaptiveQuestionEngine()
+        private let factMasteryEngine = FactMasteryEngine()
+        private let questionDifficultyEngine = QuestionDifficultyEngine()
+        private let answerOptionEngine = AnswerOptionEngine()
+
         private let countdownTimer = CountdownTimer()
 
         private var sessionStartTime: Date?
         private var sessionEndTime: Date?
 
         private var questionStartTime = Date()
+        private var allAnswers: [PracticeAnswer] = []
         private var responseTimes: [TimeInterval] = []
 
-        private let timeLimit = 30
+        private let timeLimit = 60
+        private let correctTimeBonus = 1
+        private let wrongTimePenalty = 2
 
-        private let maxTime = 45
-        private let correctTimeBonus = 2
-        private let wrongTimePenalty = 5
+        @Published var timeChangeText: String?
+        @Published var timeChangeIsPositive = true
 
         @Published private(set) var secondsRemaining: Int
-        @Published private(set) var lives = 3
         @Published private(set) var correctCount = 0
         @Published private(set) var solvedCount = 0
         @Published private(set) var currentStreak = 0
         @Published private(set) var longestStreak = 0
+        @Published private(set) var currentMistakesStreak = 0
 
         @Published private(set) var currentQuestion = PracticeQuestion(left: 2, right: 2)
         @Published private(set) var answerOptions: [AnswerOption] = []
@@ -38,9 +45,11 @@ extension RushPracticeView {
 
         private var isPaused = false
         private var isCountingDown = false
+
         @Published private(set) var isFinished = false
         @Published private(set) var isAcceptingAnswers = false
-        @Published private(set) var shouldShowResult = false
+
+        @Published private(set) var showGameOver = false
 
         private var subscriptions = Set<AnyCancellable>()
 
@@ -59,12 +68,18 @@ extension RushPracticeView {
                 }
                 .store(in: &subscriptions)
 
-            currentQuestion = makeSmartQuestion()
+            allAnswers = swiftDB.fetchSessions().flatMap(\.answers)
+
+            currentQuestion = generateQuestion()
             updateAnswerOptions()
         }
 
         var questionExpression: String {
             "\(currentQuestion.left) × \(currentQuestion.right) = "
+        }
+
+        var maxTime: Int {
+            timeLimit + 30
         }
 
         var selectedAnswerText: String {
@@ -92,13 +107,28 @@ extension RushPracticeView {
             }
         }
 
+        private func showTimeChange(_ value: Int) {
+            timeChangeIsPositive = value > 0
+            timeChangeText = value > 0 ? "+\(value)" : "\(value)"
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                self.timeChangeText = nil
+            }
+        }
+
+        var formattedTime: String {
+            let minutes = secondsRemaining / 60
+            let seconds = secondsRemaining % 60
+
+            return "\(minutes):\(String(format: "%02d", seconds))"
+        }
+
         private var sessionDuration: Int {
-            guard
-                let start = sessionStartTime,
-                let end = sessionEndTime
-            else {
+            guard let start = sessionStartTime else {
                 return 0
             }
+
+            let end = sessionEndTime ?? Date()
 
             return Int(end.timeIntervalSince(start))
         }
@@ -202,20 +232,25 @@ extension RushPracticeView {
             responseTimes.removeAll()
 
             secondsRemaining = timeLimit
-            lives = 3
+
             correctCount = 0
             solvedCount = 0
             currentStreak = 0
             longestStreak = 0
+            currentMistakesStreak = 0
+
             answers = []
+
+            allAnswers = swiftDB.fetchSessions().flatMap(\.answers)
 
             isFinished = false
             isPaused = false
+            isCountingDown = false
 
             selectedAnswer = nil
             answerResult = nil
-            
-            currentQuestion = makeSmartQuestion()
+
+            currentQuestion = generateQuestion()
             updateAnswerOptions()
 
             isAcceptingAnswers = false
@@ -223,7 +258,7 @@ extension RushPracticeView {
             start()
         }
 
-        func finish(showResult: Bool = false) {
+        func finish() {
             guard !isFinished else { return }
 
             sessionEndTime = Date()
@@ -233,8 +268,8 @@ extension RushPracticeView {
             isAcceptingAnswers = false
             isFinished = true
 
-            if showResult {
-                shouldShowResult = true
+            withAnimation(.spring()) {
+                showGameOver = true
             }
         }
 
@@ -247,7 +282,7 @@ extension RushPracticeView {
 
             if secondsRemaining <= 0 {
                 secondsRemaining = 0
-                finish(showResult: true)
+                finish()
             }
         }
 
@@ -279,43 +314,81 @@ extension RushPracticeView {
                 answerOptions[index].state = .wrong
             }
 
-            answers.append(
-                PracticeAnswer(
-                    left: currentQuestion.left,
-                    right: currentQuestion.right,
-                    correctAnswer: currentQuestion.answer,
-                    userAnswer: answer,
-                    mode: .rush
-                )
+            let practiceAnswer = PracticeAnswer(
+                left: currentQuestion.left,
+                right: currentQuestion.right,
+                correctAnswer: currentQuestion.answer,
+                userAnswer: answer,
+                mode: .rush,
+                responseTime: Date().timeIntervalSince(questionStartTime)
             )
+
+            answers.append(practiceAnswer)
+            allAnswers.append(practiceAnswer)
 
             solvedCount += 1
 
             if isCorrect {
+
                 correctCount += 1
                 currentStreak += 1
-                longestStreak = max(longestStreak, currentStreak)
+
+                currentMistakesStreak = 0
+
+                longestStreak = max(
+                    longestStreak,
+                    currentStreak
+                )
+
+                var bonus = correctTimeBonus
+
+                if currentStreak >= 25 {
+                    bonus += 4
+                } else if currentStreak >= 15 {
+                    bonus += 3
+                } else if currentStreak >= 5 {
+                    bonus += 1
+                }
+
+                let oldTime = secondsRemaining
 
                 secondsRemaining = min(
-                    secondsRemaining + correctTimeBonus,
+                    secondsRemaining + bonus,
                     maxTime
                 )
+
+                let addedTime = secondsRemaining - oldTime
+
+                if addedTime > 0 {
+                    showTimeChange(addedTime)
+                }
+
             } else {
-                lives -= 1
+
                 currentStreak = 0
-                secondsRemaining -= wrongTimePenalty
+                currentMistakesStreak += 1
+
+                var penalty = wrongTimePenalty
+
+                if currentMistakesStreak >= 4 {
+                    penalty += 3
+                } else if currentMistakesStreak >= 3 {
+                    penalty += 2
+                } else if currentMistakesStreak >= 2 {
+                    penalty += 1
+                }
+
+                secondsRemaining -= penalty
+
+                showTimeChange(-penalty)
 
                 if secondsRemaining <= 0 {
                     secondsRemaining = 0
-                    finish(showResult: true)
+                    finish()
                     return
                 }
             }
 
-            if lives <= 0 {
-                finish(showResult: true)
-                return
-            }
 
             Task {
                 try? await Task.sleep(for: .milliseconds(400))
@@ -327,60 +400,32 @@ extension RushPracticeView {
 
                 isAcceptingAnswers = true
 
-                currentQuestion = makeSmartQuestion()
-                questionStartTime = Date()
+                currentQuestion = generateQuestion()
                 updateAnswerOptions()
+                questionStartTime = Date()
             }
         }
 
-        private func makeSmartQuestion() -> PracticeQuestion {
-            let history = swiftDB.fetchSessions().flatMap { $0.answers }
-            let cell = SmartQuestionGenerator.generateSingleCell(allAnswers: history)
-            let swap = Bool.random()
-
-            return PracticeQuestion(
-                left: swap ? cell.right : cell.left,
-                right: swap ? cell.left : cell.right
+        private func generateQuestion() -> PracticeQuestion {
+            adaptiveQuestionEngine.nextPracticeQuestion(
+                from: allAnswers + answers
             )
         }
 
         private func updateAnswerOptions() {
-            let answer = currentQuestion.answer
-            var distractors: Set<Int> = []
+            let mastery = factMasteryEngine.mastery(
+                for: currentQuestion,
+                answers: allAnswers  + answers
+            )
 
-            func add(_ value: Int) {
-                guard value > 0, value != answer else { return }
-                distractors.insert(value)
-            }
+            let difficulty = questionDifficultyEngine.difficulty(
+                for: mastery
+            )
 
-            let left = currentQuestion.left
-            let right = currentQuestion.right
-
-            for offset in 1...3 {
-                add(answer + offset)
-                add(answer - offset)
-            }
-
-            add((left + 1) * right)
-            add((left - 1) * right)
-            add(left * (right + 1))
-            add(left * (right - 1))
-
-            add(answer + left)
-            add(answer - left)
-            add(answer + right)
-            add(answer - right)
-
-            while distractors.count < 3 {
-                let offset = Int.random(in: 1...10)
-                let sign = Bool.random() ? 1 : -1
-                add(answer + offset * sign)
-            }
-
-            var options = Array(distractors.prefix(3))
-            options.append(answer)
-
-            answerOptions = options.shuffled().map { AnswerOption(value: $0) }
+            answerOptions = answerOptionEngine.generate(
+                for: currentQuestion,
+                difficulty: difficulty
+            )
         }
 
         func makeResult() -> PracticeSession {

@@ -63,9 +63,16 @@ struct SurvivalPracticeView: View {
         .onAppear {
             viewModel.resetSession()
         }
-        .onChange(of: viewModel.shouldShowResult) { _, show in
-            if show {
-                completeSession()
+        .overlay {
+            if viewModel.showGameOver {
+                GameOverOverlay(
+                    title: "No Lives Left",
+                    subtitle: "Great run!",
+                    icon: "HeartBreak",
+                    streak: viewModel.longestStreak
+                ) {
+                    completeSession()
+                }
             }
         }
     }
@@ -86,25 +93,14 @@ struct SurvivalPracticeView: View {
                         }
 
                     VStack {
-//                        ZStack {
-//                            if viewModel.answerResult == .wrong {
-//                                Text("\(viewModel.currentQuestion.answer)")
-//                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-//                                    .foregroundStyle(.green)
-//                                    .padding(.bottom, 45)
-//                            }
 
-                            Text(viewModel.selectedAnswerText)
-                                .foregroundStyle(viewModel.answerTextColor)
-//                        }
+                        Text(viewModel.selectedAnswerText)
+                            .foregroundStyle(viewModel.answerTextColor)
                     }
                 }
             }
             .font(.system(size: 36, weight: .bold, design: .rounded))
 
-//                        ProgressView(value: viewModel.progress)
-            //                .tint(AppColor.commonAccentBlue)
-            //                .frame(width: 120)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 138)

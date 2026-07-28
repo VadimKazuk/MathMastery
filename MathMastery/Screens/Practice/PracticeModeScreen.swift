@@ -1,12 +1,16 @@
 import SwiftUI
 
 struct PracticeModeScreen<Content: View>: View {
+    
     enum HeaderAction {
         case close
         case pause
         case exitConfirm
     }
+
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showPauseOverlay = false
+
     let canChangeTable: Bool
     let title: String
     let headerAction: HeaderAction
@@ -80,6 +84,16 @@ struct PracticeModeScreen<Content: View>: View {
                         onBackToTableSelection()
                     }
                 )
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard headerAction == .pause else { return }
+
+            if phase == .background {
+                guard !showPauseOverlay else { return }
+
+                onPause()
+                showPauseOverlay = true
             }
         }
     }

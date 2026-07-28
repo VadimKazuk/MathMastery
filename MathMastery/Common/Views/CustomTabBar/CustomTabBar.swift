@@ -19,8 +19,8 @@ struct CustomTabBar: View {
         .init(
             type: .practice,
             title: "Practice",
-            icon: "ic_calculator",
-            selectedIcon: "ic_calculator_blue"
+            icon: "ic_controller",
+            selectedIcon: "ic_controller_blue"
         ),
         .init(
             type: .profile,

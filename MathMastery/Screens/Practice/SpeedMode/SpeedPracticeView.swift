@@ -76,8 +76,21 @@ struct SpeedPracticeView: View {
         }
         .overlay {
             if let value = viewModel.countdownValue {
-                CountdownOverlayView(
+                CountdownOverlay(
                     text: value
+                )
+            }
+        }
+        .overlay {
+            if viewModel.showGameOver {
+                GameOverOverlay(
+                    title: "Time's Up!",
+                    subtitle: "Nice run!",
+                    icon: "Alarm",
+                    streak: viewModel.bestStreak,
+                    onResult: {
+                        completeSession()
+                    }
                 )
             }
         }
@@ -87,28 +100,27 @@ struct SpeedPracticeView: View {
         .onDisappear {
             viewModel.stopTimer()
         }
-        .onChange(of: viewModel.shouldShowResult) { _, show in
-            if show {
-                completeSession()
-            }
-        }
     }
 
     private var timerBadge: some View {
         HStack(spacing: 6) {
             Image(systemName: "timer")
-                .foregroundColor(viewModel.timerForegroundColor)
-
-            Text("0:\(String(format: "%02d", viewModel.secondsRemaining))")
-                .foregroundColor(viewModel.timerForegroundColor)
+            Text(viewModel.formattedTime)
         }
-        .font(.system(size: 15, weight: .semibold, design: .rounded))
+        .foregroundColor(viewModel.secondsRemaining <= 5 ? .red : AppColor.commonAccentBlue)
+        .font(.system(size: 15, weight: .bold, design: .rounded))
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
         .background {
             Capsule()
-                .fill(viewModel.badgeBackgroundColor)
-                .animation(.easeInOut(duration: 1), value: viewModel.blinkToggle)
+                .fill(Color.white)
+        }
+        .overlay {
+            Capsule()
+                .stroke(
+                    viewModel.secondsRemaining <= 5 ? .red : .white,
+                    lineWidth: 1.5
+                )
         }
     }
 

@@ -96,10 +96,10 @@ enum PracticeMode: String, CaseIterable, Identifiable, Hashable, Codable {
 
     var lottieImage: String {
         switch self {
-        case .speed: return "bolt"
-        case .focus: return "target"
-        case .survival: return "heart"
-        case .rush: return "fire"
+        case .speed: return "ic_bolt_animated"
+        case .focus: return "ic_target_animated"
+        case .survival: return "ic_heart_animated"
+        case .rush: return "ic_flame_animated"
         }
     }
 
@@ -188,9 +188,11 @@ enum AnswerState {
     case wrong
 }
 
+import Foundation
+import SwiftData
+
 @Model
 final class PracticeAnswer {
-
     var id: UUID = UUID()
 
     var left: Int
@@ -202,6 +204,8 @@ final class PracticeAnswer {
     var modeRaw: String
     var date: Date = Date()
 
+    var responseTime: Double
+
     var session: PracticeSession?
 
     init(
@@ -209,13 +213,15 @@ final class PracticeAnswer {
         right: Int,
         correctAnswer: Int,
         userAnswer: Int,
-        mode: PracticeMode
+        mode: PracticeMode,
+        responseTime: Double
     ) {
         self.left = left
         self.right = right
         self.correctAnswer = correctAnswer
         self.userAnswer = userAnswer
         self.modeRaw = mode.rawValue
+        self.responseTime = responseTime
     }
 
     var isCorrect: Bool {
@@ -225,8 +231,18 @@ final class PracticeAnswer {
     var question: String {
         "\(left) × \(right)"
     }
-}
 
+    var mode: PracticeMode {
+        PracticeMode(rawValue: modeRaw) ?? .speed
+    }
+
+    var normalizedFact: MultiplicationFact {
+        MultiplicationFact(
+            left: min(left, right),
+            right: max(left, right)
+        )
+    }
+}
 
 import SwiftData
 

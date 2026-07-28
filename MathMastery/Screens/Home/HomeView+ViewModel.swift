@@ -38,6 +38,8 @@ extension HomeView {
         @Published private(set) var days: [WeeklyDay] = []
         @Published private(set) var challenges: [DailyChallenge] = []
 
+        @Published private(set) var allChallengesTest: [DailyChallenge] = []
+
         @Published private(set) var todaySummary = TodaySummary(
             questions: 0,
             accuracy: 0,
@@ -179,10 +181,16 @@ extension HomeView {
                     self?.scheduleCompletionReward()
                 }
             }
+
+            allChallengesTest = challengeEngine.allChallenges(from: sessions)
         }
 
         func isDevMode() -> Bool {
             appSettings.developerMode
+        }
+
+        func shouldShowAllChallenges() -> Bool {
+            appSettings.showAllChallenges
         }
 
         func startImprovementPractice() {

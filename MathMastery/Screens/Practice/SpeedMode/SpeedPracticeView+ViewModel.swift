@@ -8,6 +8,11 @@ extension SpeedPracticeView {
         private let serviceContainer: ServiceContainer
         private let accountService: AccountService
 
+        private let adaptiveQuestionEngine = AdaptiveQuestionEngine()
+        private let questionDifficultyEngine = QuestionDifficultyEngine()
+        private let factMasteryEngine = FactMasteryEngine()
+        private let answerOptionEngine = AnswerOptionEngine()
+
         private let countdownTimer = CountdownTimer()
 
         @Published private(set) var secondsRemaining = timeLimit
@@ -22,27 +27,27 @@ extension SpeedPracticeView {
 
         @Published private(set) var isFinished = false
         @Published private(set) var isAcceptingAnswers = false
-        @Published private(set) var blinkToggle = false
+
         @Published private(set) var didComplete = false
-        @Published private(set) var shouldShowResult = false
+        @Published private(set) var showGameOver = false
 
         @Published private(set) var selectedAnswer: Int?
         @Published private(set) var answerResult: AnswerResult?
 
         @Published private(set) var answers: [PracticeAnswer] = []
 
+        private var allAnswers: [PracticeAnswer] = []
+
         private var wasCountdown = false
         private var isPaused = false
         private static let timeLimit = 17
 
         private var questionStartTime = Date()
-        private var responseTimes: [TimeInterval] = []
         private var averageResponseTime: Double = 0.0
         private var sessionStartTime: Date?
         private var sessionEndTime: Date?
 
         private var timerCancellable: AnyCancellable?
-        private var blinkCancellable: AnyCancellable?
 
         private var subscriptions = Set<AnyCancellable>()
 
@@ -59,7 +64,9 @@ extension SpeedPracticeView {
                 }
                 .store(in: &subscriptions)
 
-            currentQuestion = makeSmartQuestion()
+            allAnswers = swiftDB.fetchSessions().flatMap(\.answers)
+
+            currentQuestion = generateQuestion()
             updateAnswerOptions()
         }
 
@@ -78,7 +85,14 @@ extension SpeedPracticeView {
 
             return "\(currentQuestion.left) × \(currentQuestion.right) = \(selectedAnswer)"
         }
-        
+
+        var formattedTime: String {
+            let minutes = secondsRemaining / 60
+            let seconds = secondsRemaining % 60
+
+            return "\(minutes):\(String(format: "%02d", seconds))"
+        }
+
         var answerTextColor: Color {
             switch answerResult {
             case .correct:
@@ -104,7 +118,7 @@ extension SpeedPracticeView {
         }
 
         var fastestResponseTimeValue: Double {
-            responseTimes.min() ?? 0
+            answers.map(\.responseTime).min() ?? 0
         }
 
         var answersPerMinuteValue: Double {
@@ -129,18 +143,10 @@ extension SpeedPracticeView {
             countdownTimer.text
         }
 
-        var isWarningPhase: Bool {
-            secondsRemaining <= 10
-        }
-
         var timerColor: Color {
             secondsRemaining <= 15
                 ? .red
                 : AppColor.commonAccentBlue
-        }
-
-        var timerForegroundColor: Color {
-            isWarningPhase ? .white : timerColor
         }
 
         var progress: Double {
@@ -148,8 +154,13 @@ extension SpeedPracticeView {
         }
 
         var averageResponseTimeValue: Double {
-            guard !responseTimes.isEmpty else { return 0 }
-            return responseTimes.reduce(0, +) / Double(responseTimes.count)
+            guard !answers.isEmpty else {
+                return 0
+            }
+
+            return answers.reduce(0) {
+                $0 + $1.responseTime
+            } / Double(answers.count)
         }
 
         var averageResponseTimeText: String {
@@ -157,15 +168,10 @@ extension SpeedPracticeView {
         }
 
         var badgeBackgroundColor: Color {
-            guard isWarningPhase else { return .white }
-
-            return blinkToggle
-                ? .red
-                : .red.opacity(0.4)
+            .white
         }
 
-        func finish(showResult: Bool = false) {
-
+        func finish() {
             guard !didComplete else { return }
 
             didComplete = true
@@ -177,8 +183,8 @@ extension SpeedPracticeView {
             isAcceptingAnswers = false
             isFinished = true
 
-            if showResult {
-                shouldShowResult = true
+            withAnimation(.spring()) {
+                showGameOver = true
             }
 
             stopTimer()
@@ -189,7 +195,6 @@ extension SpeedPracticeView {
 
             isPaused = false
 
-            responseTimes = []
             sessionStartTime = nil
             sessionEndTime = nil
 
@@ -205,7 +210,7 @@ extension SpeedPracticeView {
 
             answers = []
 
-            currentQuestion = makeSmartQuestion()
+            currentQuestion = generateQuestion()
             updateAnswerOptions()
         }
 
@@ -236,7 +241,6 @@ extension SpeedPracticeView {
         }
 
         func restart() {
-            shouldShowResult = false
             didComplete = false
             isFinished = false
             isPaused = false
@@ -245,22 +249,6 @@ extension SpeedPracticeView {
             beginCountdown()
         }
 
-        private func startBlinking() {
-            guard blinkCancellable == nil else { return }
-
-            blinkCancellable = Timer
-                .publish(every: 1, on: .main, in: .common)
-                .autoconnect()
-                .sink { [weak self] _ in
-                    guard let self else { return }
-                    self.blinkToggle.toggle()
-                }
-        }
-
-        private func stopBlinking() {
-            blinkCancellable?.cancel()
-            blinkCancellable = nil
-        }
 
         private func startTimer() {
             guard !isPaused else { return }
@@ -311,9 +299,6 @@ extension SpeedPracticeView {
         func selectAnswer(_ answer: Int) {
             guard isAcceptingAnswers, !isFinished else { return }
 
-            let time = Date().timeIntervalSince(questionStartTime)
-            responseTimes.append(time)
-
             isAcceptingAnswers = false
 
             selectedAnswer = answer
@@ -330,7 +315,8 @@ extension SpeedPracticeView {
                     right: currentQuestion.right,
                     correctAnswer: currentQuestion.answer,
                     userAnswer: answer,
-                    mode: .speed
+                    mode: .speed,
+                    responseTime: Date().timeIntervalSince(questionStartTime)
                 )
             )
 
@@ -340,6 +326,7 @@ extension SpeedPracticeView {
 
             if !isCorrect,
                let index = answerOptions.firstIndex(where: { $0.value == answer }) {
+                
                 answerOptions[index].state = .wrong
             }
 
@@ -365,27 +352,16 @@ extension SpeedPracticeView {
             selectedAnswer = nil
             answerResult = nil
 
-            currentQuestion = makeSmartQuestion()
+            currentQuestion = generateQuestion()
             questionStartTime = Date()
 
             updateAnswerOptions()
             isAcceptingAnswers = true
         }
 
-        // MARK: - Smart Question Generator Integration
-
-        private func makeSmartQuestion() -> PracticeQuestion {
-            // 1. Извлекаем историю ответов
-            let allAnswers = swiftDB.fetchSessions().flatMap { $0.answers }
-
-            // 2. Делегируем логику единому генератору
-            let selectedCell = SmartQuestionGenerator.generateSingleCell(allAnswers: allAnswers)
-
-            // 3. Рандомизируем отображение (зеркальное переворачивание)
-            let shouldSwap = Bool.random()
-            return PracticeQuestion(
-                left: shouldSwap ? selectedCell.right : selectedCell.left,
-                right: shouldSwap ? selectedCell.left : selectedCell.right
+        private func generateQuestion() -> PracticeQuestion {
+            adaptiveQuestionEngine.nextPracticeQuestion(
+                from: allAnswers + answers
             )
         }
 
@@ -402,61 +378,26 @@ extension SpeedPracticeView {
 
             secondsRemaining = max(secondsRemaining - 1, 0)
 
-            if secondsRemaining <= 10 {
-                if blinkCancellable == nil {
-                    blinkToggle = false
-                    startBlinking()
-                }
-            }
-
-            if secondsRemaining > 10 {
-                stopBlinking()
-            }
-
             if secondsRemaining == 0 {
-                finish(showResult: true)
+                finish()
             }
         }
 
         private func updateAnswerOptions() {
-            let answer = currentQuestion.answer
 
-            var distractors: Set<Int> = []
+            let mastery = factMasteryEngine.mastery(
+                for: currentQuestion,
+                answers: allAnswers
+            )
 
-            func add(_ value: Int) {
-                guard value > 0, value != answer else { return }
-                distractors.insert(value)
-            }
+            let difficulty = questionDifficultyEngine.difficulty(
+                for: mastery
+            )
 
-            let left = currentQuestion.left
-            let right = currentQuestion.right
-
-            for offset in 1...3 {
-                add(answer + offset)
-                add(answer - offset)
-            }
-
-            add((left + 1) * right)
-            add((left - 1) * right)
-            add(left * (right + 1))
-            add(left * (right - 1))
-
-            add(answer + left)
-            add(answer - left)
-            add(answer + right)
-            add(answer - right)
-
-            while distractors.count < 3 {
-                let offset = Int.random(in: 1...10)
-                let sign = Bool.random() ? 1 : -1
-                add(answer + offset * sign)
-            }
-
-            var finalOptions = Array(distractors.prefix(3))
-            finalOptions.append(answer)
-
-            answerOptions = finalOptions.shuffled()
-                .map { AnswerOption(value: $0) }
+            answerOptions = answerOptionEngine.generate(
+                for: currentQuestion,
+                difficulty: difficulty
+            )
         }
 
         func saveSession() -> PracticeSession {

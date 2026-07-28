@@ -7,8 +7,12 @@ extension FocusPracticeView {
         private let accountService: AccountService
         private let swiftDB: SwiftDataService
 
+        private let adaptiveQuestionEngine = AdaptiveQuestionEngine()
+
         let mode: FocusPracticeMode
         let focusTable: Int?
+
+        private var historyAnswers: [PracticeAnswer] = []
 
         @Published private(set) var questionIndex = 0
         @Published var answerText = ""
@@ -31,7 +35,8 @@ extension FocusPracticeView {
 
         private(set) var questions: [PracticeQuestion] = []
 
-        private let questionsAmount: Int = 10
+        private let questionsAmount = 10
+
         private var isPaused = false
 
         private var sessionStartTime: Date?
@@ -52,10 +57,15 @@ extension FocusPracticeView {
             self.mode = mode
             self.focusTable = focusTable
 
-            self.questions = generateQuestions()
+            historyAnswers = swiftDB.fetchSessions().flatMap(\.answers)
+            questions = generateQuestions()
 
-            self.sessionStartTime = Date()
-            self.questionStartTime = Date()
+            sessionStartTime = Date()
+            questionStartTime = Date()
+        }
+
+        var currentQuestion: PracticeQuestion {
+            questions[questionIndex]
         }
 
         var answerColor: Color {
@@ -71,21 +81,14 @@ extension FocusPracticeView {
         }
 
         private var sessionDuration: Int {
-            sessionEndTime = sessionEndTime ?? Date()
-
-            guard
-                let start = sessionStartTime,
-                let end = sessionEndTime
-            else {
-                return 0
-            }
-
+            guard let start = sessionStartTime else { return 0 }
+            let end = sessionEndTime ?? Date()
             return Int(end.timeIntervalSince(start))
         }
 
         private var averageResponseTimeValue: Double {
             guard !responseTimes.isEmpty else { return 0 }
-            return responseTimes.reduce(0,+) / Double(responseTimes.count)
+            return responseTimes.reduce(0, +) / Double(responseTimes.count)
         }
 
         private var fastestResponseTimeValue: Double {
@@ -94,11 +97,7 @@ extension FocusPracticeView {
 
         private var answersPerMinuteValue: Double {
             guard sessionDuration > 0 else { return 0 }
-            return Double(completedQuestions) / Double(sessionDuration) * 60
-        }
-
-        var currentQuestion: PracticeQuestion {
-            questions[questionIndex]
+            return (Double(completedQuestions) / Double(sessionDuration)) * 60
         }
 
         var progressText: String {
@@ -106,34 +105,49 @@ extension FocusPracticeView {
         }
 
         var progress: Double {
-            Double(completedQuestions) / Double(questions.count)
+            guard !questions.isEmpty else { return 0 }
+            return Double(completedQuestions) / Double(questions.count)
         }
 
         // MARK: - QUESTIONS
 
-        func generateQuestions() -> [PracticeQuestion] {
-            let allAnswers = swiftDB.fetchSessions().flatMap { $0.answers }
+        private func generateQuestions() -> [PracticeQuestion] {
 
-            let selectedCells = SmartQuestionGenerator.generateSessionCells(
-                allAnswers: allAnswers,
-                amount: questionsAmount
+            let facts = adaptiveQuestionEngine.nextQuestions(
+                from: historyAnswers,
+                count: questionsAmount
             )
 
+            let questions: [PracticeQuestion]
+
             switch mode {
+
             case .all:
-                return selectedCells
-                    .map { PracticeQuestion(left: $0.left, right: $0.right) }
-                    .shuffled()
+
+                questions = facts.map { fact in
+
+                    let swap = Bool.random()
+
+                    return PracticeQuestion(
+                        left: swap ? fact.right : fact.left,
+                        right: swap ? fact.left : fact.right
+                    )
+                }
 
             case .table(let table):
-                let generated = selectedCells.map { cell in
-                    let shouldSwap = Bool.random()
-                    let left = shouldSwap ? cell.right : table
-                    let right = shouldSwap ? table : cell.right
-                    return PracticeQuestion(left: left, right: right)
+
+                questions = facts.map { fact in
+
+                    let swap = Bool.random()
+
+                    return PracticeQuestion(
+                        left: swap ? fact.right : table,
+                        right: swap ? table : fact.right
+                    )
                 }
-                return generated.shuffled()
             }
+
+            return questions.shuffled()
         }
 
         // MARK: - RESET
@@ -142,77 +156,95 @@ extension FocusPracticeView {
             questionIndex = 0
             completedQuestions = 0
             correctCount = 0
+
             answerText = ""
 
             isCorrectAnswer = false
             showAnswerButton = false
             showingCorrectAnswer = false
             isWaitingForNext = false
+
             shouldClearOnNextInput = false
             wrongAttempts = 0
 
+            currentUserAnswer = nil
+
             answers.removeAll()
+            responseTimes.removeAll()
 
             sessionStartTime = Date()
             sessionEndTime = nil
 
-            responseTimes.removeAll()
             questionStartTime = Date()
 
             questions = generateQuestions()
         }
 
-        func pause() { isPaused = true }
-        func resume() { isPaused = false }
+        func pause() {
+            isPaused = true
+        }
+
+        func resume() {
+            isPaused = false
+        }
+
         func restart() {
             isPaused = false
+            historyAnswers = swiftDB.fetchSessions().flatMap(\.answers)
             reset()
         }
 
         // MARK: - INPUT
 
         func appendDigit(_ digit: Int) {
-            guard !isPaused, !isWaitingForNext, !isCorrectAnswer else { return }
+            guard !isPaused, !isWaitingForNext, !isCorrectAnswer else {
+                return
+            }
 
             if shouldClearOnNextInput {
                 answerText = ""
                 shouldClearOnNextInput = false
             }
 
-            guard answerText.count < 2 else { return }
+            guard answerText.count < 2 else {
+                return
+            }
+
             answerText.append("\(digit)")
         }
 
         func deleteDigit() {
-            guard !isPaused, !isWaitingForNext, !isCorrectAnswer, !answerText.isEmpty else { return }
+            guard !isPaused, !isWaitingForNext, !isCorrectAnswer, !answerText.isEmpty else {
+                return
+            }
+
             answerText.removeLast()
         }
 
         // MARK: - ANSWER
 
         func submitAnswer(completion: @escaping (PracticeSession?) -> Void) {
-            // Если горит режим "NEXT" (после клика на Show Answer)
             if isWaitingForNext {
                 let result = moveNextOrResult()
                 completion(result)
                 return
             }
 
-            guard !isPaused,
-                  !isCorrectAnswer,
-                  let answer = Int(answerText)
-            else { return }
+            guard !isPaused, !isCorrectAnswer, let answer = Int(answerText) else {
+                return
+            }
 
-            let isCorrect = answer == currentQuestion.answer
+            let responseTime = Date().timeIntervalSince(questionStartTime)
+            responseTimes.append(responseTime)
+
             currentUserAnswer = answer
 
-            if isCorrect {
-                // 1. Включаем подсвечивание зеленым
+            if answer == currentQuestion.answer {
                 isCorrectAnswer = true
                 correctCount += 1
+
                 saveCurrentAnswer(userAnswer: answer)
 
-                // 2. Короткая пауза (350мс), чтобы пользователь успел увидеть зеленый цвет
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                     let result = self.moveNextOrResult()
                     completion(result)
@@ -236,25 +268,24 @@ extension FocusPracticeView {
             isWaitingForNext = true
             showAnswerButton = false
 
-            // Берем последний введенный пользователем ответ
-            let wrongInput = currentUserAnswer ?? (Int(answerText) ?? 0)
+            let wrongInput = currentUserAnswer ?? Int(answerText) ?? 0
 
             answerText = "\(currentQuestion.answer)"
 
-            // Сохраняем неверный ответ
             saveCurrentAnswer(userAnswer: wrongInput)
         }
 
         private func saveCurrentAnswer(userAnswer: Int) {
-            answers.append(
-                PracticeAnswer(
-                    left: currentQuestion.left,
-                    right: currentQuestion.right,
-                    correctAnswer: currentQuestion.answer,
-                    userAnswer: userAnswer,
-                    mode: .focus
-                )
+            let answer = PracticeAnswer(
+                left: currentQuestion.left,
+                right: currentQuestion.right,
+                correctAnswer: currentQuestion.answer,
+                userAnswer: userAnswer,
+                mode: .focus,
+                responseTime: Date().timeIntervalSince(questionStartTime)
             )
+
+            answers.append(answer)
             completedQuestions += 1
         }
 
@@ -271,12 +302,16 @@ extension FocusPracticeView {
             questionStartTime = Date()
 
             answerText = ""
+
             isCorrectAnswer = false
             showAnswerButton = false
             showingCorrectAnswer = false
             isWaitingForNext = false
+
             shouldClearOnNextInput = false
             wrongAttempts = 0
+
+            currentUserAnswer = nil
 
             return nil
         }
@@ -284,6 +319,8 @@ extension FocusPracticeView {
         // MARK: - SAVE
 
         private func saveSession() -> PracticeSession {
+            sessionEndTime = Date()
+
             let session = PracticeSession(
                 mode: .focus,
                 focusTable: focusTable,
@@ -299,6 +336,7 @@ extension FocusPracticeView {
             )
 
             let xp = XPSystem.xp(for: session)
+
             accountService.addXP(xp)
             swiftDB.saveSession(session)
 

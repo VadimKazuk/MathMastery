@@ -30,6 +30,10 @@ struct HomeView: View {
                     todaySummaryCard
                     dailyChallengeCard
 
+                    if viewModel.shouldShowAllChallenges() {
+                        allChallengesCard
+                    }
+
                     if viewModel.improvement != nil {
                         improvementCard
                             .transition(
@@ -103,9 +107,8 @@ struct HomeView: View {
                     let streakLevel = viewModel.streakLevel
 
                     HStack(spacing: 4) {
-                        Image(streakLevel.imageName)
-                            .resizable()
-                            .scaledToFit()
+                        LottieView(name: streakLevel.lottieImageName, loop: true)
+                            .id(streakLevel.lottieImageName)
                             .frame(width: 28, height: 28)
 
                         Text("\(viewModel.streakCount)")
@@ -291,6 +294,35 @@ struct HomeView: View {
         .cornerRadius(24)
     }
 
+    private var allChallengesCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+
+            HStack {
+                Text("All Challenges")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+
+                Spacer()
+
+                Text("Developer")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.orange.opacity(0.15))
+                    )
+            }
+
+            ForEach(Array(viewModel.allChallengesTest.enumerated()), id: \.offset) { _, challenge in
+                ChallengeRow(challenge: challenge)
+            }
+        }
+        .padding(20)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(24)
+    }
+
     private var improvementCard: some View {
         guard let improvement = viewModel.improvement else {
             return AnyView(EmptyView())
@@ -304,14 +336,20 @@ struct HomeView: View {
                     Spacer()
 
                     ZStack {
-                        Image(improvementIconName(for: improvement))
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 30, height: 30)
-                            .id(improvementIconName(for: improvement))
-                            .transition(.scale.combined(with: .opacity))
+                        let icon = improvementIconName(for: improvement)
+
+                        if icon == "ic_check_milestone" {
+                            Image(icon)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 30, height: 30)
+                        } else {
+                            LottieView(name: icon, loop: true)
+                                .frame(width: 40, height: 40)
+                        }
                     }
-                    .frame(width: 30, height: 30)
+                    .id(improvementIconName(for: improvement))
+                    .transition(.scale.combined(with: .opacity))
                     .animation(
                         .easeOut(duration: 0.25),
                         value: improvementIconName(for: improvement)
@@ -519,10 +557,10 @@ struct ChallengeRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Image(challenge.icon)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 15, height: 15)
+
+                    LottieView(name: challenge.icon, loop: true)
+                        .id(challenge.icon)
+                        .frame(width: 20, height: 20)
 
                     Text(challenge.title)
                         .font(.system(size: 15, weight: .semibold, design: .rounded))

@@ -83,7 +83,6 @@ extension PracticeView {
         }
 
         // MARK: - Navigation
-
         func startMode(_ mode: PracticeMode) {
             switch mode {
             case .speed:

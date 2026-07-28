@@ -32,7 +32,6 @@ struct PracticeView: View {
 private extension PracticeView {
 
     var contentView: some View {
-
         VStack(alignment: .leading, spacing: 24) {
             modesList
         }
@@ -65,10 +64,9 @@ private extension PracticeView {
 
                 HStack(spacing: 4) {
 
-                    Image(mode.icImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 16, height: 16)
+                    LottieView(name: mode.lottieImage, loop: true)
+                        .id(mode.lottieImage)
+                        .frame(width: 30, height: 30)
 
                     Text("Skill: \(mode.trainingFocus)")
                     .font(.system(size: 12, weight: .bold, design: .rounded))

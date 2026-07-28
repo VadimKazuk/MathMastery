@@ -23,15 +23,15 @@ struct DailyChallengeRoulette: View {
     let spinCount = 20
 
     private let dummyChallenges = [
-        DailyChallenge(id: .questions, title: "Solve 20 Questions", icon: "ic_fire_daily", checkmark: "ic_check_red", current: 0, target: 20, mode: nil, metadata: nil),
-        DailyChallenge(id: .accuracy, title: "Reach 100% Accuracy", icon: "ic_accuracy_daily", checkmark: "ic_check_green", current: 0, target: 90, mode: nil, metadata: "10+ questions"),
-        DailyChallenge(id: .mode, title: "Complete Speed Mode", icon: "ic_heart_red", checkmark: "ic_check_yellow", current: 0, target: 1, mode: .speed, metadata: nil),
-        DailyChallenge(id: .mastery, title: "Master ×8", icon: "ic_master_daily", checkmark: "ic_check_purple", current: 0, target: 100, mode: nil, metadata: nil),
-        DailyChallenge(id: .survival, title: "Survive 3 Minutes", icon: "ic_pacman_daily", checkmark: "ic_check_orange", current: 0, target: 3, mode: .survival, metadata: "3 minutes"),
-        DailyChallenge(id: .xp, title: "Earn 330 XP", icon: "ic_rocket_daily", checkmark: "ic_check_blue", current: 0, target: 330, mode: nil, metadata: nil),
-        DailyChallenge(id: .streak, title: "20 Answer Streak", icon: "ic_rock_n_roll_daily", checkmark: "ic_check_green", current: 0, target: 20, mode: nil, metadata: nil),
-        DailyChallenge(id: .noMistakes, title: "10 Perfect Answers", icon: "ic_done_folder_daily", checkmark: "ic_check_mint", current: 0, target: 10, mode: nil, metadata: nil),
-        DailyChallenge(id: .modeMaster, title: "Complete All Modes", icon: "ic_task_daily", checkmark: "ic_check_indigo", current: 0, target: 4, mode: nil, metadata: "Speed, Focus, Rush, Survival")
+        DailyChallenge(id: .questions, title: "Solve 20 Questions", icon: "ic_fire_daily_animated", checkmark: "ic_check_red", current: 0, target: 20, mode: nil, metadata: nil),
+        DailyChallenge(id: .accuracy, title: "Reach 100% Accuracy", icon: "ic_accuracy_daily_animated", checkmark: "ic_check_green", current: 0, target: 90, mode: nil, metadata: "10+ questions"),
+        DailyChallenge(id: .mode, title: "Complete Speed Mode", icon: "ic_all_modes_daily_animated", checkmark: "ic_check_yellow", current: 0, target: 1, mode: .speed, metadata: nil),
+        DailyChallenge(id: .mastery, title: "Master ×8", icon: "ic_award_daily_animated", checkmark: "ic_check_purple", current: 0, target: 100, mode: nil, metadata: nil),
+        DailyChallenge(id: .survival, title: "Survive 3 Minutes", icon: "ic_pacman_daily_animated", checkmark: "ic_check_orange", current: 0, target: 3, mode: .survival, metadata: "3 minutes"),
+        DailyChallenge(id: .xp, title: "Earn 330 XP", icon: "ic_rocket_daily_animated", checkmark: "ic_check_blue", current: 0, target: 330, mode: nil, metadata: nil),
+        DailyChallenge(id: .streak, title: "20 Answer Streak", icon: "ic_rock_n_roll_daily_animated", checkmark: "ic_check_green", current: 0, target: 20, mode: nil, metadata: nil),
+        DailyChallenge(id: .noMistakes, title: "10 Perfect Answers", icon: "ic_ok_daily_animated", checkmark: "ic_check_mint", current: 0, target: 10, mode: nil, metadata: nil),
+        DailyChallenge(id: .modeMaster, title: "Complete All Modes", icon: "ic_all_modes_daily_animated", checkmark: "ic_check_indigo", current: 0, target: 4, mode: nil, metadata: "Speed, Focus, Rush, Survival")
     ]
 
     var body: some View {

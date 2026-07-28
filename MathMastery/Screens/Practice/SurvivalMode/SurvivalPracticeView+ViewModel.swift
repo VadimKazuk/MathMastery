@@ -7,11 +7,17 @@ extension SurvivalPracticeView {
         private let accountService: AccountService
         private let swiftDB: SwiftDataService
 
+        private let adaptiveQuestionEngine = AdaptiveQuestionEngine()
+        private let answerOptionEngine = AnswerOptionEngine()
+        private let questionDifficultyEngine = QuestionDifficultyEngine()
+        private let factMasteryEngine = FactMasteryEngine()
+
         private var sessionStartTime: Date?
         private var sessionEndTime: Date?
 
-        private var responseTimes: [TimeInterval] = []
         private var questionStartTime = Date()
+
+        private var allAnswers: [PracticeAnswer] = []
 
         @Published private(set) var lives = 3
         @Published private(set) var correctCount = 0
@@ -29,7 +35,8 @@ extension SurvivalPracticeView {
 
         @Published private(set) var isFinished = false
         @Published private(set) var isAcceptingAnswers = true
-        @Published private(set) var shouldShowResult = false
+
+        @Published private(set) var showGameOver = false
 
         private var didFinish = false
 
@@ -38,7 +45,9 @@ extension SurvivalPracticeView {
             self.swiftDB = serviceContainer.resolve(SwiftDataService.self)
             self.accountService = serviceContainer.resolve(AccountService.self)
 
-            currentQuestion = makeSmartQuestion()
+            allAnswers = swiftDB.fetchSessions().flatMap(\.answers)
+
+            currentQuestion = generateQuestion()
             updateAnswerOptions()
         }
 
@@ -83,16 +92,18 @@ extension SurvivalPracticeView {
         }
 
         private var averageResponseTimeValue: Double {
-            guard !responseTimes.isEmpty else {
+            guard !answers.isEmpty else {
                 return 0
             }
 
-            return responseTimes.reduce(0,+)
-            / Double(responseTimes.count)
+            return answers.reduce(0) {
+                $0 + $1.responseTime
+            }
+            / Double(answers.count)
         }
 
         private var fastestResponseTimeValue: Double {
-            responseTimes.min() ?? 0
+            answers.map(\.responseTime).min() ?? 0
         }
 
         private var answersPerMinuteValue: Double {
@@ -113,24 +124,26 @@ extension SurvivalPracticeView {
             survivedCount = 0
             currentStreak = 0
             longestStreak = 0
+
             answers.removeAll()
+
             isFinished = false
             isAcceptingAnswers = true
             didFinish = false
 
             sessionStartTime = Date()
             sessionEndTime = nil
-            responseTimes.removeAll()
 
             questionStartTime = Date()
 
-            currentQuestion = makeSmartQuestion()
+            allAnswers = swiftDB.fetchSessions().flatMap(\.answers)
+            currentQuestion = generateQuestion()
             updateAnswerOptions()
         }
 
         // MARK: - Finish
 
-        func finish(showResult: Bool = false) {
+        func finish() {
             guard !didFinish else { return }
 
             didFinish = true
@@ -140,8 +153,8 @@ extension SurvivalPracticeView {
             isFinished = true
             isAcceptingAnswers = false
 
-            if showResult {
-                shouldShowResult = true
+            withAnimation(.spring()) {
+                showGameOver = true
             }
         }
 
@@ -152,11 +165,6 @@ extension SurvivalPracticeView {
             guard isAcceptingAnswers, !isFinished else { return }
 
             isAcceptingAnswers = false
-
-            let responseTime = Date()
-                .timeIntervalSince(questionStartTime)
-
-            responseTimes.append(responseTime)
 
             survivedCount += 1
 
@@ -185,15 +193,25 @@ extension SurvivalPracticeView {
 
         // MARK: - Smart Question Generator Integration
 
-        private func makeSmartQuestion() -> PracticeQuestion {
-            let allAnswers = swiftDB.fetchSessions().flatMap { $0.answers }
+        private func generateQuestion() -> PracticeQuestion {
+            adaptiveQuestionEngine.nextPracticeQuestion(
+                from: allAnswers + answers
+            )
+        }
 
-            let selectedCell = SmartQuestionGenerator.generateSingleCell(allAnswers: allAnswers)
+        private func updateAnswerOptions() {
+            let mastery = factMasteryEngine.mastery(
+                for: currentQuestion,
+                answers: allAnswers
+            )
 
-            let shouldSwap = Bool.random()
-            return PracticeQuestion(
-                left: shouldSwap ? selectedCell.right : selectedCell.left,
-                right: shouldSwap ? selectedCell.left : selectedCell.right
+            let difficulty = questionDifficultyEngine.difficulty(
+                for: mastery
+            )
+
+            answerOptions = answerOptionEngine.generate(
+                for: currentQuestion,
+                difficulty: difficulty
             )
         }
 
@@ -204,13 +222,15 @@ extension SurvivalPracticeView {
                 right: currentQuestion.right,
                 correctAnswer: currentQuestion.answer,
                 userAnswer: userAnswer,
-                mode: .survival
+                mode: .survival,
+                responseTime: Date().timeIntervalSince(questionStartTime)
             )
             answers.append(currentAnswer)
 
             if isCorrect {
                 correctCount += 1
                 currentStreak += 1
+
                 if currentStreak > longestStreak {
                     longestStreak = currentStreak
                 }
@@ -220,9 +240,9 @@ extension SurvivalPracticeView {
             }
 
             if lives <= 0 {
-                finish(showResult: true)
+                finish()
             } else {
-                currentQuestion = makeSmartQuestion()
+                currentQuestion = generateQuestion()
                 questionStartTime = Date()
                 updateAnswerOptions()
                 isAcceptingAnswers = true
@@ -251,7 +271,9 @@ extension SurvivalPracticeView {
             accountService.addXP(xp)
 
             swiftDB.saveSession(session)
-            
+
+            allAnswers.append(contentsOf: answers)
+
             return session
         }
 
@@ -260,48 +282,6 @@ extension SurvivalPracticeView {
         func makeResult() -> PracticeSession {
             let session = saveSession()
             return session
-        }
-
-        // MARK: - Helpers
-
-        private func updateAnswerOptions() {
-            let answer = currentQuestion.answer
-            var distractors: Set<Int> = []
-
-            func add(_ value: Int) {
-                guard value > 0, value != answer else { return }
-                distractors.insert(value)
-            }
-
-            let left = currentQuestion.left
-            let right = currentQuestion.right
-
-            for offset in 1...3 {
-                add(answer + offset)
-                add(answer - offset)
-            }
-
-            add((left + 1) * right)
-            add((left - 1) * right)
-            add(left * (right + 1))
-            add(left * (right - 1))
-
-            add(answer + left)
-            add(answer - left)
-            add(answer + right)
-            add(answer - right)
-
-            while distractors.count < 3 {
-                let offset = Int.random(in: 1...10)
-                let sign = Bool.random() ? 1 : -1
-                add(answer + offset * sign)
-            }
-
-            var finalOptions = Array(distractors.prefix(3))
-            finalOptions.append(answer)
-
-            answerOptions = finalOptions.shuffled()
-                .map { AnswerOption(value: $0) }
         }
 
         func backgroundColor(for option: AnswerOption) -> Color {

@@ -63,9 +63,26 @@ struct RushPracticeView: View {
                 .padding(.bottom, 20)
 
                 HStack {
-                    livesBadge
                     Spacer()
-                    timerBadge
+
+                    ZStack(alignment: .topTrailing) {
+                        timerBadge
+
+                        if let text = viewModel.timeChangeText {
+                            Text(text)
+                                .font(.system(size: 18, weight: .black, design: .rounded))
+                                .foregroundColor(
+                                    viewModel.timeChangeIsPositive
+                                    ? .green
+                                    : .red
+                                )
+                                .offset(y: -35)
+                                .transition(
+                                    .scale(scale: 0.2)
+                                    .combined(with: .opacity)
+                                )
+                        }
+                    }
                 }
 
                 questionCard
@@ -74,21 +91,33 @@ struct RushPracticeView: View {
         }
         .overlay {
             if let value = viewModel.countdownValue {
-                CountdownOverlayView(
+                CountdownOverlay(
                     text: value
                 )
             }
         }
+        .overlay {
+            if viewModel.showGameOver {
+                GameOverOverlay(
+                    title: "Time's Up!",
+                    subtitle: "Nice run!",
+                    icon: "Alarm",
+                    streak: viewModel.longestStreak,
+                    onResult: {
+                        completeSession()
+                    }
+                )
+            }
+        }
+        .animation(
+            .spring(response: 0.35, dampingFraction: 0.55),
+            value: viewModel.timeChangeText
+        )
         .onAppear {
             viewModel.start()
         }
         .onDisappear {
             viewModel.stopTimer()
-        }
-        .onChange(of: viewModel.shouldShowResult) { _, show in
-            if show {
-                completeSession()
-            }
         }
     }
 
@@ -171,39 +200,33 @@ struct RushPracticeView: View {
                         borderWidth: 3
                     )
                 )
-                .allowsHitTesting(viewModel.isAcceptingAnswers)
+                .allowsHitTesting(
+                    viewModel.isAcceptingAnswers &&
+                    !viewModel.showGameOver
+                )
             }
-        }
-    }
-
-    private var livesBadge: some View {
-        HStack(spacing: 5) {
-            ForEach(0..<3, id: \.self) { index in
-                Image(systemName: index < viewModel.lives ? "heart.fill" : "heart")
-                    .foregroundColor(index < viewModel.lives ? .red : .gray.opacity(0.5))
-            }
-        }
-        .font(.system(size: 16))
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .background {
-            Capsule()
-                .fill(Color.white)
         }
     }
 
     private var timerBadge: some View {
         HStack(spacing: 6) {
             Image(systemName: "timer")
-            Text("0:\(String(format: "%02d", viewModel.secondsRemaining))")
+            Text(viewModel.formattedTime)
         }
-        .foregroundColor(viewModel.secondsRemaining <= 10 ? .red : AppColor.commonAccentBlue)
+        .foregroundColor(viewModel.secondsRemaining <= 5 ? .red : AppColor.commonAccentBlue)
         .font(.system(size: 15, weight: .bold, design: .rounded))
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
         .background {
             Capsule()
                 .fill(Color.white)
+        }
+        .overlay {
+            Capsule()
+                .stroke(
+                    viewModel.secondsRemaining <= 5 ? .red : .white,
+                    lineWidth: 1.5
+                )
         }
     }
 

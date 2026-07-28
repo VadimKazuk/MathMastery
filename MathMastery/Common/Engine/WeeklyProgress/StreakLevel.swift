@@ -37,6 +37,21 @@ enum StreakLevel {
         }
     }
 
+    var lottieImageName: String {
+        switch self {
+        case .zero:
+            return "ic_flame_animated_0"
+        case .beginner:
+            return "ic_flame_animated_1"
+        case .active:
+            return "ic_flame_animated_2"
+        case .hot:
+            return "ic_flame_animated_3"
+        case .legendary:
+            return "ic_flame_animated_4"
+        }
+    }
+
     var color: Color {
         switch self {
         case .zero:

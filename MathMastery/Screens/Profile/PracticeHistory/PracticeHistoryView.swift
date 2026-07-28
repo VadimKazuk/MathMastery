@@ -117,9 +117,9 @@ struct HistoryRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Image(session.mode.icImage)
-                        .resizable()
-                        .scaledToFit()
+
+                    LottieView(name: session.mode.lottieImage, loop: true)
+                        .id(session.mode.lottieImage)
                         .frame(width: 16, height: 16)
 
                     Text(headerText)

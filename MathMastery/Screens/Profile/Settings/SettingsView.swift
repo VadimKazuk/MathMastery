@@ -206,6 +206,13 @@ struct SettingsView: View {
                     onImage: "ic_power_on",
                     offImage: "ic_power_off"
                 )
+
+                toggleRow(
+                    title: "All Challenges",
+                    value: viewModel.showAllChallenges,
+                    onImage: "ic_power_on",
+                    offImage: "ic_power_off"
+                )
             }
         }
     }

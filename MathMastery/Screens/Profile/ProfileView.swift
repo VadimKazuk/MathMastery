@@ -226,7 +226,6 @@ struct ProfileView: View {
                 PersonalBestCard(
                     title: "SPEED",
                     mode: .speed,
-                    icon: "ic_bolt_yellow",
                     session: viewModel.bestSpeed
                 ) {
                     selectedSession = $0
@@ -235,7 +234,6 @@ struct ProfileView: View {
                 PersonalBestCard(
                     title: "SURVIVAL",
                     mode: .survival,
-                    icon: "ic_heart_red",
                     session: viewModel.bestSurvival
                 ) {
                     selectedSession = $0
@@ -244,7 +242,6 @@ struct ProfileView: View {
                 PersonalBestCard(
                     title: "RUSH",
                     mode: .rush,
-                    icon: "ic_flame_orange",
                     session: viewModel.bestRush
                 ) {
                     selectedSession = $0
@@ -464,7 +461,6 @@ struct ProfileView: View {
 struct PersonalBestCard: View {
     let title: String
     let mode: PracticeMode
-    let icon: String
     let session: PracticeSession?
     var onTap: (PracticeSession) -> Void
 
@@ -476,11 +472,11 @@ struct PersonalBestCard: View {
         } label: {
             VStack(spacing: 8) {
                 HStack(spacing: 2) {
-                    Image(icon)
-                        .resizable()
-                        .scaledToFit()
+                    LottieView(name: mode.lottieImage, loop: true)
+                        .id(mode.lottieImage)
                         .frame(width: 14, height: 14)
                         .opacity(session != nil ? 1 : 0.5)
+
                     Text(title)
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(session != nil ? .primary : .secondary)

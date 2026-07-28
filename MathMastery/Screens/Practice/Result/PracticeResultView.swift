@@ -35,7 +35,6 @@ struct PracticeResultView: View {
         }
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationBarBackButtonHidden(true)
-        //        .hidesCustomTabBar()
     }
 
     private var hero: some View {
@@ -45,10 +44,12 @@ struct PracticeResultView: View {
                 color: viewModel.session.mode.accentColor,
                 lineWidth: 8
             ) {
-                Image(viewModel.session.mode.icImageSized)
-                    .resizable()
-                    .scaledToFit()
+                LottieView(name: viewModel.session.mode.lottieImage, loop: true)
                     .frame(width: 42, height: 42)
+//                Image(viewModel.session.mode.icImageSized)
+//                    .resizable()
+//                    .scaledToFit()
+//                    .frame(width: 42, height: 42)
             }
             .frame(width: 92, height: 92)
             .overlay(alignment: .bottomTrailing) {

@@ -88,6 +88,90 @@ final class ChallengeEngine {
         }
     }
 
+    func allChallenges(from sessions: [PracticeSession]) -> [DailyChallenge] {
+        [
+            questionsChallenge(
+                target: 50,
+                sessions: sessions
+            ),
+
+            accuracyChallenge(
+                target: 100,
+                sessions: sessions
+            ),
+
+            modeChallenge(
+                mode: .speed,
+                sessions: sessions
+            ),
+
+            modeChallenge(
+                mode: .focus,
+                sessions: sessions
+            ),
+
+            modeChallenge(
+                mode: .rush,
+                sessions: sessions
+            ),
+
+            modeChallenge(
+                mode: .survival,
+                sessions: sessions
+            ),
+
+            masteryChallenge(
+                table: "7",
+                target: 30,
+                sessions: sessions
+            ),
+
+            survivalChallenge(
+                target: 300,
+                sessions: sessions
+            ),
+
+            xpChallenge(
+                target: 250,
+                sessions: sessions
+            ),
+
+            streakChallenge(
+                target: 25,
+                sessions: sessions
+            ),
+
+            noMistakesChallenge(
+                target: 20,
+                sessions: sessions
+            ),
+
+            modeMasterChallenge(
+                sessions: sessions
+            ),
+
+            personalBestChallenge(
+                mode: .speed,
+                sessions: sessions
+            ),
+
+            personalBestChallenge(
+                mode: .focus,
+                sessions: sessions
+            ),
+
+            personalBestChallenge(
+                mode: .rush,
+                sessions: sessions
+            ),
+
+            personalBestChallenge(
+                mode: .survival,
+                sessions: sessions
+            )
+        ]
+    }
+
 
     // MARK: - Questions
 
@@ -104,7 +188,7 @@ final class ChallengeEngine {
         return DailyChallenge(
             id: .questions,
             title: "Solve \(target) Questions",
-            icon: "ic_fire_daily",
+            icon: "ic_fire_daily_animated",
             checkmark: "ic_check_red",
             current: solved,
             target: target,
@@ -131,7 +215,7 @@ final class ChallengeEngine {
         return DailyChallenge(
             id: .accuracy,
             title: "Reach 100% Accuracy",
-            icon: "ic_accuracy_daily",
+            icon: "ic_accuracy_daily_animated",
             checkmark: "ic_check_green",
             current: bestAccuracy,
             target: target,
@@ -156,7 +240,7 @@ final class ChallengeEngine {
         return DailyChallenge(
             id: .mode,
             title: "Complete \(mode.title) Mode",
-            icon: mode.icImage,
+            icon: mode.lottieImage,
             checkmark: "ic_check_yellow",
             current: completed ? 1 : 0,
             target: 1,
@@ -188,7 +272,7 @@ final class ChallengeEngine {
         return DailyChallenge(
             id: .mastery,
             title: "Master ×\(tableNumber)",
-            icon: "ic_master_daily",
+            icon: "ic_award_daily_animated",
             checkmark: "ic_check_purple",
             current: min(progress, target),
             target: target,
@@ -217,7 +301,7 @@ final class ChallengeEngine {
         return DailyChallenge(
             id: .survival,
             title: "Survive \(target / 60) Minutes",
-            icon: "ic_pacman_daily",
+            icon: "ic_pacman_daily_animated",
             checkmark: "ic_check_orange",
             current: duration,
             target: target,
@@ -241,7 +325,7 @@ final class ChallengeEngine {
         return DailyChallenge(
             id: .xp,
             title: "Earn \(target) XP",
-            icon: "ic_rocket_daily",
+            icon: "ic_rocket_daily_animated",
             checkmark: "ic_check_blue",
             current: xp,
             target: target,
@@ -262,7 +346,7 @@ final class ChallengeEngine {
         return DailyChallenge(
             id: .streak,
             title: "\(target) Answer Streak",
-            icon: "ic_rock_n_roll_daily",
+            icon: "ic_rock_n_roll_daily_animated",
             checkmark: "ic_check_green",
             current: best,
             target: target,
@@ -286,7 +370,7 @@ final class ChallengeEngine {
         return DailyChallenge(
             id: .noMistakes,
             title: "\(target) Perfect Answers",
-            icon: "ic_done_folder_daily",
+            icon: "ic_ok_daily_animated",
             checkmark: "ic_check_mint",
             current: completed ? target : 0,
             target: target,
@@ -308,7 +392,7 @@ final class ChallengeEngine {
         return DailyChallenge(
             id: .modeMaster,
             title: "Complete All Modes",
-            icon: "ic_task_daily",
+            icon: "ic_all_modes_daily_animated",
             checkmark: "ic_check_indigo",
             current: modes.count,
             target: 4,
@@ -367,7 +451,7 @@ final class ChallengeEngine {
         return DailyChallenge(
             id: .personalBest,
             title: "Beat Your \(mode.title) Record",
-            icon: "ic_crown_daily",
+            icon: "ic_crown_daily_animated",
             checkmark: "ic_check_pink",
             current: beaten ? 1 : 0,
             target: 1,

@@ -12,6 +12,15 @@ final class AppSettingsManager: ObservableObject {
         }
     }
 
+    @Published var showAllChallenges: Bool {
+        didSet {
+            storage.set(
+                showAllChallenges,
+                forKey: Keys.showAllChallenges
+            )
+        }
+    }
+
     @Published var hapticFeedback: Bool {
         didSet {
             storage.set(
@@ -30,17 +39,22 @@ final class AppSettingsManager: ObservableObject {
         self.developerMode =
             storage.object(forKey: Keys.developerMode) as? Bool ?? false
 
+        self.showAllChallenges =
+            storage.object(forKey: Keys.showAllChallenges) as? Bool ?? false
+
         self.hapticFeedback =
             storage.object(forKey: Keys.hapticFeedback) as? Bool ?? true
     }
 
     func restoreDefaults() {
         developerMode = false
+        showAllChallenges = false
         hapticFeedback = true
     }
 
     private enum Keys {
         static let developerMode = "developerMode"
+        static let showAllChallenges = "showAllChallenges"
         static let hapticFeedback = "hapticFeedback"
     }
 }

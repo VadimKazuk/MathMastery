@@ -42,13 +42,13 @@ extension ImprovementType {
     var icon: String {
         switch self {
         case .multiplicationTable:
-            return "ic_accuracy_improve"
+            return "ic_focus_improvement_animated"
         case .accuracy:
-            return "ic_graph_improving"
+            return "ic_focus_improvement_animated"
         case .speed:
-            return "ic_speed"
+            return "ic_focus_improvement_animated"
         case .streak:
-            return "ic_fire"
+            return "ic_focus_improvement_animated"
         }
     }
 }

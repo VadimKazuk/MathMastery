@@ -8,18 +8,30 @@ final class WeeklyProgressEngine {
         return calendar
     }
 
-    func calculateStreak(
-        from sessions: [PracticeSession]
-    ) -> Int {
-
+    func calculateStreak(from sessions: [PracticeSession]) -> Int {
         let practiceDays = Set(
             sessions.map {
                 calendar.startOfDay(for: $0.date)
             }
         )
 
+        let today = calendar.startOfDay(for: Date())
+
+        // Если сегодня еще не занимались, но занимались вчера,
+        // продолжаем считать стрик от вчерашнего дня.
+        let startDay: Date
+
+        if practiceDays.contains(today) {
+            startDay = today
+        } else if let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
+                  practiceDays.contains(yesterday) {
+            startDay = yesterday
+        } else {
+            return 0
+        }
+
         var streak = 0
-        var day = calendar.startOfDay(for: Date())
+        var day = startDay
 
         while practiceDays.contains(day) {
             streak += 1

@@ -51,8 +51,26 @@ extension SettingsView {
                 get: {
                     self.appSettings.developerMode
                 },
+                set: { value in
+                    self.appSettings.developerMode = value
+
+                    self.appSettings.showAllChallenges = value
+
+                    // сюда потом можно добавить и другие dev-настройки
+                    // self.appSettings.showDebugMenu = value
+                    // self.appSettings.showFPS = value
+                    // self.appSettings.unlockAllLevels = value
+                }
+            )
+        }
+
+        var showAllChallenges: Binding<Bool> {
+            Binding(
+                get: {
+                    self.appSettings.showAllChallenges
+                },
                 set: {
-                    self.appSettings.developerMode = $0
+                    self.appSettings.showAllChallenges = $0
                 }
             )
         }
